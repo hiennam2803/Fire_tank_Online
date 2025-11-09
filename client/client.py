@@ -35,6 +35,100 @@ class TankGame:
         
         # GUI
         self.renderer = None
+        
+        self.authenticated = False
+        self.player_db_id = None
+        self.username = None
+
+    def authenticate(self):
+        """Xác thực người dùng"""
+        print("\n=== Fire Tank Online ===")
+        print("1. Đăng nhập")
+        print("2. Đăng ký")
+        
+        choice = input("Chọn option (1/2): ").strip()
+        username = input("Username: ").strip()
+        password = input("Password: ").strip()
+        
+        auth_type = 'login' if choice == '1' else 'register'
+        auth_data = {
+            'type': auth_type,
+            'username': username,
+            'password': password
+        }
+        
+        if auth_type == 'register':
+            name = input("Tên hiển thị (để trống dùng username): ").strip()
+            if name:
+                auth_data['name'] = name
+        
+        try:
+            # Gửi thông tin xác thực
+            json_data = json.dumps(auth_data)
+            print(f"🔄 Đang gửi auth data: {json_data}")
+            self.tcp_socket.send(json_data.encode())
+            
+            # Nhận phản hồi
+            response_data = self.tcp_socket.recv(1024).decode()
+            print(f"📨 Nhận response: {response_data}")  # Debug
+            
+            if not response_data:
+                print("❌ Không nhận được phản hồi từ server")
+                return False
+                
+            response = json.loads(response_data)
+            
+            if response.get('success'):
+                self.authenticated = True
+                self.player_db_id = response.get('player_id')
+                self.username = username
+                print(f"✅ Đăng nhập thành công! ID: {self.player_db_id}")
+                return True
+            else:
+                print(f"❌ Lỗi: {response.get('message')}")
+                return False
+                
+        except json.JSONDecodeError as e:
+            print(f"❌ Lỗi parse JSON từ server: {e}")
+            print(f"📨 Dữ liệu nhận được: {response_data}")
+            return False
+        except Exception as e:
+            print(f"❌ Lỗi xác thực: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    def connect(self):
+        """Kết nối tới server với xác thực"""
+        try:
+            # Connect TCP socket
+            self.tcp_socket.connect((self.host, GameConstants.TCP_PORT))
+            
+            # Xác thực
+            if not self.authenticate():
+                self.running = False
+                return
+                
+            # Khởi tạo renderer trước
+            self.renderer = GameRenderer(self.username)
+            self.renderer.initialize()
+            
+            # Thiết lập UDP
+            self.udp_socket.bind(('', 0))
+            local_udp_port = self.udp_socket.getsockname()[1]
+            self.tcp_socket.send(f"UDP_PORT:{local_udp_port}".encode())
+            
+            # Nhận player ID từ server và cập nhật renderer
+            self.player_id = self.tcp_socket.recv(1024).decode()
+            self.renderer.set_player_id(self.player_id)  # Cập nhật player_id trong renderer
+            print(f"Connected as Player {self.player_id} ({self.username})")
+            
+            # Bắt đầu các thread nhận dữ liệu
+            threading.Thread(target=self.receive_udp_data, daemon=True).start()
+            threading.Thread(target=self.receive_tcp_data, daemon=True).start()
+            
+        except Exception as e:
+            print(f"Connection error: {e}")
+            self.running = False
 
     def handle_restart(self):
         """Reset client state khi game restart"""
@@ -66,33 +160,7 @@ class TankGame:
                     self.game_renderer.set_map(map_id)
             
             # Cập nhật game state
-            self.current_game_state = game_state
-    def connect(self):
-        """Kết nối tới server"""
-        try:
-            # Connect TCP socket
-            self.tcp_socket.connect((self.host, GameConstants.TCP_PORT))
-            
-            # Nhận player ID từ server
-            self.player_id = self.tcp_socket.recv(1024).decode()
-            print(f"Connected as Player {self.player_id}")
-            
-            # Bind UDP socket và gửi port cho server
-            self.udp_socket.bind(('', 0))
-            local_udp_port = self.udp_socket.getsockname()[1]
-            self.tcp_socket.send(f"UDP_PORT:{local_udp_port}".encode())
-
-            # Khởi tạo renderer
-            self.renderer = GameRenderer(self.player_id)
-            self.renderer.initialize()
-            
-            # Bắt đầu các thread nhận dữ liệu
-            threading.Thread(target=self.receive_udp_data, daemon=True).start()
-            threading.Thread(target=self.receive_tcp_data, daemon=True).start()
-            
-        except Exception as e:
-            print(f"Connection error: {e}")
-            self.running = False
+            self.game_state = game_state
 
     def receive_tcp_data(self):
         """Nhận dữ liệu TCP từ server"""

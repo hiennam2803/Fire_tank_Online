@@ -15,6 +15,10 @@ class GameEngine:
         self.ready_players = set()
         self.restart_requests = set()
         self.game_started = False
+        self.current_session_id = None
+        self.game_start_time = 0
+        self.player_stats = {}  # Theo dõi thống kê player
+        self.current_map = 0  # Map hiện tại
 
     def add_player(self, player_id, udp_address, tcp_socket):
         """Thêm player mới vào game"""
@@ -28,6 +32,93 @@ class GameEngine:
             'ammo': GameConstants.MAX_AMMO,
             'ready': False
         }
+        
+        # Khởi tạo stats
+        self.player_stats[player_id] = {
+            'damage_dealt': 0,
+            'shots_fired': 0,
+            'shots_hit': 0,
+            'reloads_count': 0,
+            'survival_time': 0
+        }
+
+    def process_player_message(self, player_id, message):
+        """Xử lý message từ player với tracking stats"""
+        player = self.players[player_id]
+        
+        # Cập nhật vị trí
+        if 'x' in message and 'y' in message and 'angle' in message:
+            player['x'] = max(20, min(GameConstants.SCREEN_WIDTH - 20, message['x']))
+            player['y'] = max(20, min(GameConstants.SCREEN_HEIGHT - 20, message['y']))
+            player['angle'] = message['angle']
+        
+        # Xử lý bắn đạn
+        if message.get('fire') and player['ammo'] > 0 and not self.game_state['game_over']:
+            player['ammo'] -= 1
+            self.bullets.append({
+                'x': player['x'],
+                'y': player['y'],
+                'angle': player['angle'],
+                'speed': GameConstants.BULLET_SPEED,
+                'owner': player_id
+            })
+            self.player_stats[player_id]['shots_fired'] += 1
+        
+        # Xử lý reload
+        if message.get('reload'):
+            player['ammo'] = GameConstants.MAX_AMMO
+            self.player_stats[player_id]['reloads_count'] += 1
+        
+        # Cập nhật ammo
+        if 'ammo_update' in message:
+            player['ammo'] = message['ammo_update']
+
+    def _check_collisions(self):
+        """Kiểm tra va chạm đạn với players và tracking damage"""
+        for bullet in self.bullets[:]:
+            for pid, player in self.players.items():
+                if pid != bullet['owner']:
+                    distance = math.sqrt((bullet['x'] - player['x'])**2 + 
+                                       (bullet['y'] - player['y'])**2)
+                    if distance < 25:  # Va chạm
+                        player['hp'] -= GameConstants.BULLET_DAMAGE
+                        
+                        # Tracking stats
+                        owner_stats = self.player_stats[bullet['owner']]
+                        owner_stats['damage_dealt'] += GameConstants.BULLET_DAMAGE
+                        owner_stats['shots_hit'] += 1
+                        
+                        if bullet in self.bullets:
+                            self.bullets.remove(bullet)
+                        
+                        # Kiểm tra game over
+                        if player['hp'] <= 0:
+                            self._end_game(winner_id=bullet['owner'])
+                        break
+
+    def get_player_stats(self, player_id):
+        """Lấy thống kê của player"""
+        if player_id not in self.player_stats:
+            return None
+            
+        stats = self.player_stats[player_id].copy()
+        stats['final_hp'] = self.players[player_id]['hp']
+        stats['survival_time'] = int(time.time() - self.game_start_time)
+        
+        return stats
+
+    def get_player_score(self, player_id):
+        """Tính điểm cho player"""
+        if player_id not in self.player_stats:
+            return 0
+            
+        stats = self.player_stats[player_id]
+        score = (stats['damage_dealt'] * 2 + 
+                stats['shots_hit'] * 10 + 
+                self.players[player_id]['hp'])
+        return score
+
+    
 
     def remove_player(self, player_id):
         """Xóa player khỏi game"""
@@ -53,35 +144,7 @@ class GameEngine:
         self.game_state['game_over'] = False
         self.game_state['winner_id'] = None
 
-    def process_player_message(self, player_id, message):
-        """Xử lý message từ player"""
-        player = self.players[player_id]
-        
-        # Cập nhật vị trí
-        if 'x' in message and 'y' in message and 'angle' in message:
-            player['x'] = max(20, min(GameConstants.SCREEN_WIDTH - 20, message['x']))
-            player['y'] = max(20, min(GameConstants.SCREEN_HEIGHT - 20, message['y']))
-            player['angle'] = message['angle']
-        
-        # Xử lý bắn đạn
-        if message.get('fire') and player['ammo'] > 0 and not self.game_state['game_over']:
-            player['ammo'] -= 1
-            self.bullets.append({
-                'x': player['x'],
-                'y': player['y'],
-                'angle': player['angle'],
-                'speed': GameConstants.BULLET_SPEED,
-                'owner': player_id
-            })
-        
-        # Xử lý reload
-        if message.get('reload'):
-            player['ammo'] = GameConstants.MAX_AMMO
-        
-        # Cập nhật ammo
-        if 'ammo_update' in message:
-            player['ammo'] = message['ammo_update']
-
+    
     def update_game(self):
         """Cập nhật logic game chính"""
         if self.game_started and not self.game_state['game_over']:
@@ -100,23 +163,7 @@ class GameEngine:
                 bullet['y'] < 0 or bullet['y'] > GameConstants.SCREEN_HEIGHT):
                 self.bullets.remove(bullet)
 
-    def _check_collisions(self):
-        """Kiểm tra va chạm đạn với players"""
-        for bullet in self.bullets[:]:
-            for pid, player in self.players.items():
-                if pid != bullet['owner']:
-                    distance = math.sqrt((bullet['x'] - player['x'])**2 + 
-                                       (bullet['y'] - player['y'])**2)
-                    if distance < 25:  # Va chạm
-                        player['hp'] -= GameConstants.BULLET_DAMAGE
-                        if bullet in self.bullets:
-                            self.bullets.remove(bullet)
-                        
-                        # Kiểm tra game over
-                        if player['hp'] <= 0:
-                            self._end_game(winner_id=bullet['owner'])
-                        break
-
+    
     def _end_game(self, winner_id):
         """Kết thúc game"""
         self.game_started = False
@@ -149,6 +196,8 @@ class GameEngine:
         self.bullets.clear()
         self.game_state['game_over'] = False
         self.game_state['winner_id'] = None
+        self.player_stats.clear()
+        self.current_session_id = None
         
         # Reset player positions và stats
         for pid, player in self.players.items():

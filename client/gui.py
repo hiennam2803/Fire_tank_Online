@@ -7,8 +7,9 @@ from common.messages import GameConstants
 
 
 class GameRenderer:
-    def __init__(self, player_id):
-        self.player_id = player_id
+    def __init__(self, username):
+        self.player_name = username
+        self.player_id = None  # Will be set later
         self.screen = None
         self.font = None
         self.big_font = None
@@ -18,6 +19,11 @@ class GameRenderer:
         self.current_size = (self.original_width, self.original_height)
         self.backgrounds = []
         self.current_background = None
+        
+    def set_player_id(self, player_id):
+        """Set the player ID after receiving it from server"""
+        self.player_id = player_id
+        pygame.display.set_caption(f"Tank Battle - {self.player_name} (Player {self.player_id})")
         self.scaled_background = None
         self.current_map_id = 0  # ID của map hiện tại
         self.map_initialized = False
