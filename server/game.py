@@ -46,7 +46,7 @@ class GameEngine:
         """Xử lý message từ player với tracking stats"""
         player = self.players[player_id]
         
-        # Cập nhật vị trí
+        # Cập nhật vị trí - SỬA LẠI ĐỂ NHẬN DI CHUYỂN TỪ CLIENT
         if 'x' in message and 'y' in message and 'angle' in message:
             player['x'] = max(20, min(GameConstants.SCREEN_WIDTH - 20, message['x']))
             player['y'] = max(20, min(GameConstants.SCREEN_HEIGHT - 20, message['y']))

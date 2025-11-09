@@ -251,9 +251,14 @@ class GameRenderer:
         # Vẽ background
         self.draw_background()
             
-        # Draw players
+        # Draw players - SỬA LẠI MÀU SẮC
         for pid, player in game_state['players'].items():
-            color = (0, 255, 0) if pid == self.player_id else (255, 0, 0)
+            # Sửa màu sắc: player hiện tại màu xanh, đối thủ màu đỏ
+            if str(pid) == str(self.player_id):
+                color = (0, 255, 0)  # Xanh lá - player hiện tại
+            else:
+                color = (255, 0, 0)  # Đỏ - đối thủ
+                
             x, y = self._scale_position(player['x'], player['y'])
             radius = self._scale_value(20)
             pygame.draw.circle(self.screen, color, (int(x), int(y)), int(radius))
