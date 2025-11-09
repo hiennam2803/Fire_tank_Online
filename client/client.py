@@ -4,6 +4,7 @@ import json
 import pygame
 import math
 import time
+
 from client.gui import GameRenderer
 from common.messages import MessageTypes, GameConstants
 
@@ -44,7 +45,28 @@ class TankGame:
         self.waiting_for_restart = False
         self.last_fire_time = 0
         self.ready = False
-
+        
+    def handle_server_message(self, data):
+        message_type = data.get('type')
+        
+        if message_type == 'map_info':
+            # Nhận thông tin map từ server
+            map_id = data.get('map_id', 0)
+            print(f"Received map info from server: map_id={map_id}")
+            self.game_renderer.set_map(map_id)
+        
+        elif message_type == 'game_state':
+            # Xử lý game state
+            game_state = data.get('state', {})
+            # Kiểm tra nếu game state có chứa map_id
+            if 'map_id' in game_state:
+                map_id = game_state['map_id']
+                if not self.game_renderer.map_initialized or self.game_renderer.get_current_map_id() != map_id:
+                    print(f"Setting map from game_state: {map_id}")
+                    self.game_renderer.set_map(map_id)
+            
+            # Cập nhật game state
+            self.current_game_state = game_state
     def connect(self):
         """Kết nối tới server"""
         try:
