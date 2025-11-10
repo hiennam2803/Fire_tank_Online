@@ -27,7 +27,32 @@ git clone https://github.com/hiennam2803/Fire_tank_Online.git
 cd Fire_tank_Online
 ```
 
-2. Không cần cài đặt thêm thư viện vì trò chơi sử dụng thư viện Python chuẩn.
+2. Cài dependencies (khuyến nghị dùng virtual environment nhưng không bắt buộc)
+
+2a Cách an toàn (khuyến nghị): tạo virtualenv và cài tất cả:
+```powershell
+python -m venv .venv
+# nếu PowerShell chặn script, cho phép tạm thời trong session hiện tại:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+2b Nếu bạn KHÔNG muốn dùng virtualenv (cài trực tiếp vào Python hệ thống):
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Lưu ý: `requirements.txt` hiện gồm cả `pygame_gui` như một tùy chọn UI; nếu bạn không muốn cài các package phụ, chỉ cài `pygame` và `pymysql` bằng:
+```powershell
+python -m pip install pygame pymysql
+# hoặc cài pygame_gui riêng nếu cần giao diện nâng cao
+python -m pip install pygame_gui
+```
+
+3. Nếu bạn cài thêm package mới (ví dụ `pygame_gui`) nên cập nhật `requirements.txt` và commit để mọi người cùng cài theo.
 
 ## Cách Chơi
 
@@ -133,6 +158,21 @@ Dự án này là mã nguồn mở và có sẵn dưới Giấy phép MIT.
 2. **Vấn Đề Hiển Thị**
    - Đảm bảo Python và Pygame được cài đặt đúng cách
    - Kiểm tra yêu cầu độ phân giải tối thiểu (800x600)
+
+## Hướng dẫn commit
+# 1 Kiểm tra lần cuối
+   git status --short
+
+# 2 Stage chỉ các thay đổi tracked (an toàn: không thêm untracked files)
+   git add -u
+
+# 3 Xem file đã staged
+   git status --short
+   or
+   git diff --staged --name-only
+
+# 4 Commit với message (ví dụ)
+   git commit -m "Text"
 
 ## Hỗ Trợ
 

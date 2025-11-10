@@ -41,6 +41,139 @@ class GameRenderer:
         self.load_backgrounds()
         # Đặt map mặc định ban đầu
         self.set_map(0)  # Map 0 làm mặc định
+
+    def _draw_input_box(self, rect, text, active=False, password=False):
+        """Vẽ hộp nhập liệu đơn giản và trả về rect để xử lý sự kiện"""
+        color = (255, 255, 255) if active else (180, 180, 180)
+        pygame.draw.rect(self.screen, (20, 20, 20), rect)
+        pygame.draw.rect(self.screen, color, rect, 2)
+        display_text = text
+        if password:
+            display_text = '*' * len(text)
+        txt_surf = self.font.render(display_text, True, (230, 230, 230))
+        txt_rect = txt_surf.get_rect(midleft=(rect.x + 8, rect.centery))
+        self.screen.blit(txt_surf, txt_rect)
+
+    def show_login_screen(self):
+        """Hiển thị màn hình đăng nhập / đăng ký bằng Pygame. Trả về dict với host, type, username, password, name"""
+        # Các trường input
+        host = ''
+        username = ''
+        password = ''
+        name = ''
+        auth_type = 'login'  # hoặc 'register'
+
+        active = 0  # 0:host,1:username,2:password,3:name
+        clock = pygame.time.Clock()
+        running = True
+
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_TAB:
+                        active = (active + 1) % 4
+                    elif event.key == pygame.K_RETURN:
+                        # Nếu đang đăng nhập, ignore name field
+                        if auth_type == 'login' or (auth_type == 'register' and username and password):
+                            running = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        if active == 0 and host:
+                            host = host[:-1]
+                        elif active == 1 and username:
+                            username = username[:-1]
+                        elif active == 2 and password:
+                            password = password[:-1]
+                        elif active == 3 and name:
+                            name = name[:-1]
+                    elif event.key == pygame.K_F1:
+                        auth_type = 'login'
+                    elif event.key == pygame.K_F2:
+                        auth_type = 'register'
+                    else:
+                        ch = event.unicode
+                        if ch:
+                            if active == 0:
+                                host += ch
+                            elif active == 1:
+                                username += ch
+                            elif active == 2:
+                                password += ch
+                            elif active == 3:
+                                name += ch
+
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    mx, my = event.pos
+                    # tính active theo vị trí (đơn giản)
+                    # Host box
+                    hw = 400; hh = 40
+                    cx, cy = self._get_center()
+                    start_x = cx - hw//2
+                    y0 = cy - 120
+                    boxes = [pygame.Rect(start_x, y0, hw, hh),
+                             pygame.Rect(start_x, y0 + 60, hw, hh),
+                             pygame.Rect(start_x, y0 + 120, hw, hh),
+                             pygame.Rect(start_x, y0 + 180, hw, hh)]
+                    for i, r in enumerate(boxes):
+                        if r.collidepoint(mx, my):
+                            active = i
+
+            # Vẽ UI
+            self.screen.fill((10, 10, 30))
+            title = self.big_font.render("Fire Tank - Login", True, (255, 220, 0))
+            tx, ty = self._get_center()
+            self.screen.blit(title, title.get_rect(center=(tx, 80)))
+
+            hw = 400; hh = 40
+            start_x = tx - hw//2
+            y0 = 160
+
+            # Host
+            host_rect = pygame.Rect(start_x, y0, hw, hh)
+            self._draw_input_box(host_rect, host or 'localhost', active == 0, password=False)
+            host_label = self.font.render("Server IP (Enter for localhost)", True, (200,200,200))
+            self.screen.blit(host_label, (start_x, y0 - 28))
+
+            # Username
+            user_rect = pygame.Rect(start_x, y0 + 60, hw, hh)
+            self._draw_input_box(user_rect, username, active == 1)
+            user_label = self.font.render("Username", True, (200,200,200))
+            self.screen.blit(user_label, (start_x, y0 + 60 - 28))
+
+            # Password
+            pass_rect = pygame.Rect(start_x, y0 + 120, hw, hh)
+            self._draw_input_box(pass_rect, password, active == 2, password=True)
+            pass_label = self.font.render("Password", True, (200,200,200))
+            self.screen.blit(pass_label, (start_x, y0 + 120 - 28))
+
+            # Display name (for register)
+            name_rect = pygame.Rect(start_x, y0 + 180, hw, hh)
+            self._draw_input_box(name_rect, name, active == 3)
+            name_label = self.font.render("Display name (register)", True, (180,180,180))
+            self.screen.blit(name_label, (start_x, y0 + 180 - 28))
+
+            # Auth type instructions
+            info = self.font.render("Press F1 to Login, F2 to Register. Press ENTER to submit.", True, (220,220,220))
+            self.screen.blit(info, info.get_rect(center=(tx, y0 + 260)))
+
+            type_text = self.font.render(f"Mode: {auth_type.upper()}", True, (255,255,0))
+            self.screen.blit(type_text, (start_x, y0 + 260 + 30))
+
+            pygame.display.flip()
+            clock.tick(30)
+
+        # Nếu host rỗng, dùng localhost
+        if not host or host.strip() == '':
+            host = 'localhost'
+
+        return {
+            'host': host.strip(),
+            'type': auth_type,
+            'username': username.strip(),
+            'password': password,
+            'name': name.strip() if name.strip() else None
+        }
     
     def set_map(self, map_id):
         """Thiết lập map dựa trên ID từ server"""

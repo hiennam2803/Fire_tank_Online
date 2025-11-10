@@ -1,2 +1,7 @@
-# Không cần thư viện ngoài, dùng Python chuẩn
+# Thư viện cần thiết cho dự án
 python>=3.8
+# Core dependencies
+pygame>=2.0
+pymysql>=1.0
+# Optional (UI): dùng để cải thiện giao diện; không bắt buộc nếu bạn dùng UI custom
+pygame_gui>=0.5

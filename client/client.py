@@ -59,7 +59,8 @@ class TankGame:
         
     # Giao diện
         self.renderer = None
-        
+        self.gui_auth = None
+
         self.authenticated = False
         self.player_db_id = None
         self.username = None
@@ -68,36 +69,49 @@ class TankGame:
         """Xác thực người dùng"""
         print("\n=== Fire Tank Online ===")
 
-    # Nếu chế độ auto qua CLI có credentials, dùng chúng
-        if getattr(self, 'cli_args', None) and getattr(self.cli_args, 'auto', False) and self.cli_args.username and self.cli_args.password:
-            username = self.cli_args.username
-            password = self.cli_args.password
-            auth_type = self.cli_args.auth_type or 'login'
-            auth_data = {
-                'type': auth_type,
-                'username': username,
-                'password': password
-            }
-            if auth_type == 'register' and getattr(self.cli_args, 'name', None):
-                auth_data['name'] = self.cli_args.name
-            print(f"Auto auth: username={username}, type={auth_type}")
+        # Nếu có dữ liệu auth từ GUI, dùng nó
+        if getattr(self, 'gui_auth', None):
+            gui = self.gui_auth
+            username = gui.get('username')
+            password = gui.get('password')
+            auth_type = gui.get('type', 'login')
+            # Có thể override host nếu GUI cung cấp
+            if gui.get('host'):
+                self.host = gui.get('host')
+            auth_data = {'type': auth_type, 'username': username, 'password': password}
+            if auth_type == 'register' and gui.get('name'):
+                auth_data['name'] = gui.get('name')
         else:
-            print("1. Đăng nhập")
-            print("2. Đăng ký")
-            choice = input("Chọn option (1/2): ").strip()
-            username = input("Username: ").strip()
-            password = input("Password: ").strip()
-            auth_type = 'login' if choice == '1' else 'register'
-            auth_data = {
-                'type': auth_type,
-                'username': username,
-                'password': password
-            }
-            if auth_type == 'register':
-                name = input("Tên hiển thị (để trống dùng username): ").strip()
-                if name:
-                    auth_data['name'] = name
-        
+            # Nếu chế độ auto qua CLI có credentials, dùng chúng
+            if getattr(self, 'cli_args', None) and getattr(self.cli_args, 'auto', False) and self.cli_args.username and self.cli_args.password:
+                username = self.cli_args.username
+                password = self.cli_args.password
+                auth_type = self.cli_args.auth_type or 'login'
+                auth_data = {
+                    'type': auth_type,
+                    'username': username,
+                    'password': password
+                }
+                if auth_type == 'register' and getattr(self.cli_args, 'name', None):
+                    auth_data['name'] = self.cli_args.name
+                print(f"Auto auth: username={username}, type={auth_type}")
+            else:
+                print("1. Đăng nhập")
+                print("2. Đăng ký")
+                choice = input("Chọn option (1/2): ").strip()
+                username = input("Username: ").strip()
+                password = input("Password: ").strip()
+                auth_type = 'login' if choice == '1' else 'register'
+                auth_data = {
+                    'type': auth_type,
+                    'username': username,
+                    'password': password
+                }
+                if auth_type == 'register':
+                    name = input("Tên hiển thị (để trống dùng username): ").strip()
+                    if name:
+                        auth_data['name'] = name
+
         try:
             # Gửi dữ liệu xác thực
             json_data = json.dumps(auth_data)
@@ -138,18 +152,41 @@ class TankGame:
     def connect(self):
         """Kết nối tới server với xác thực"""
         try:
+            # Khởi tạo renderer sớm để sử dụng màn hình đăng nhập GUI nếu cần
+            self.renderer = GameRenderer(self.username or '')
+            try:
+                self.renderer.initialize()
+            except Exception:
+                # Nếu pygame không khả dụng trong môi trường hiện tại, ta vẫn tiếp tục (fallback CLI)
+                pass
+
+            # Nếu không ở chế độ auto CLI, hiển thị màn hình login GUI để nhập host/credentials
+            if not (getattr(self, 'cli_args', None) and getattr(self.cli_args, 'auto', False)):
+                gui_auth = None
+                try:
+                    gui_auth = self.renderer.show_login_screen()
+                except Exception:
+                    gui_auth = None
+
+                if gui_auth is None:
+                    print("Login canceled or GUI closed.")
+                    self.running = False
+                    return
+                # Lưu thông tin từ GUI
+                self.gui_auth = gui_auth
+                if gui_auth.get('host'):
+                    self.host = gui_auth.get('host')
+
             # Kết nối TCP
             self.tcp_socket.connect((self.host, GameConstants.TCP_PORT))
-            
+
             # Thực hiện xác thực
             if not self.authenticate():
                 self.running = False
                 return
-                
-            # Khởi tạo renderer trước khi bắt đầu vòng lặp đồ họa
-            self.renderer = GameRenderer(self.username)
-            self.renderer.initialize()
-            self.renderer.set_player_id(self.player_id)  # Cập nhật player_id trong renderer
+
+            # Cập nhật renderer với player id đã nhận
+            self.renderer.set_player_id(self.player_id)
             
             # Thiết lập UDP
             self.udp_socket.bind(('', 0))
