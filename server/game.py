@@ -43,7 +43,7 @@ class GameEngine:
         }
 
     def process_player_message(self, player_id, message):
-        """Xử lý message từ player với tracking stats"""
+        """Xử lý message từ player và cập nhật thống kê"""
         player = self.players[player_id]
         
         # Cập nhật vị trí - SỬA LẠI ĐỂ NHẬN DI CHUYỂN TỪ CLIENT
@@ -74,7 +74,7 @@ class GameEngine:
             player['ammo'] = message['ammo_update']
 
     def _check_collisions(self):
-        """Kiểm tra va chạm đạn với players và tracking damage"""
+        """Kiểm tra va chạm đạn với người chơi và theo dõi sát thương"""
         for bullet in self.bullets[:]:
             for pid, player in self.players.items():
                 if pid != bullet['owner']:
@@ -83,7 +83,7 @@ class GameEngine:
                     if distance < 25:  # Va chạm
                         player['hp'] -= GameConstants.BULLET_DAMAGE
                         
-                        # Tracking stats
+                        # Cập nhật thống kê (damage, hits)
                         owner_stats = self.player_stats[bullet['owner']]
                         owner_stats['damage_dealt'] += GameConstants.BULLET_DAMAGE
                         owner_stats['shots_hit'] += 1

@@ -14,7 +14,7 @@ class TankGame:
     def __init__(self):
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # Parse optional CLI args for auto mode
+    # Phân tích tham số CLI tuỳ chọn cho chế độ tự động
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('--auto', action='store_true', help='Auto-login mode (skip interactive prompts)')
         parser.add_argument('--host')
@@ -27,7 +27,7 @@ class TankGame:
         except Exception:
             self.cli_args = argparse.Namespace(auto=False, host=None, auth_type=None, username=None, password=None, name=None)
 
-        # Determine host: CLI host > interactive input > localhost
+    # Xác định host: tham số CLI > nhập tương tác > localhost
         if getattr(self.cli_args, 'host', None):
             self.host = self.cli_args.host or 'localhost'
         else:
@@ -38,12 +38,12 @@ class TankGame:
         self.game_state = None
         self.running = True
         
-        # Game state flags
+    # Cờ trạng thái trò chơi
         self.ready = False
         self.game_started = False
         self.waiting_for_players = True
         
-        # Game mechanics
+    # Cơ chế trò chơi
         self.last_fire_time = 0
         self.ammo_count = GameConstants.MAX_AMMO
         self.reloading = False
@@ -52,12 +52,12 @@ class TankGame:
         self.winner_id = None
         self.waiting_for_restart = False
         
-        # Player position và angle (lưu cục bộ)
+    # Vị trí và góc hướng của người chơi (lưu cục bộ)
         self.player_x = 400
         self.player_y = 300
         self.player_angle = 0
         
-        # GUI
+    # Giao diện
         self.renderer = None
         
         self.authenticated = False
@@ -68,7 +68,7 @@ class TankGame:
         """Xác thực người dùng"""
         print("\n=== Fire Tank Online ===")
 
-        # If CLI auto mode with credentials provided, use them
+    # Nếu chế độ auto qua CLI có credentials, dùng chúng
         if getattr(self, 'cli_args', None) and getattr(self.cli_args, 'auto', False) and self.cli_args.username and self.cli_args.password:
             username = self.cli_args.username
             password = self.cli_args.password
@@ -99,14 +99,14 @@ class TankGame:
                     auth_data['name'] = name
         
         try:
-            # Gửi thông tin xác thực
+            # Gửi dữ liệu xác thực
             json_data = json.dumps(auth_data)
             print(f"🔄 Đang gửi auth data: {json_data}")
             self.tcp_socket.send(json_data.encode())
             
-            # Nhận phản hồi
+            # Nhận phản hồi từ server
             response_data = self.tcp_socket.recv(1024).decode()
-            print(f"📨 Nhận response: {response_data}")  # Debug
+            print(f"📨 Nhận response: {response_data}")  # Gỡ lỗi
             
             if not response_data:
                 print("❌ Không nhận được phản hồi từ server")
@@ -117,7 +117,7 @@ class TankGame:
             if response.get('success'):
                 self.authenticated = True
                 self.player_db_id = response.get('player_id')
-                self.player_id = str(self.player_db_id)  # Đặt player_id ngay tại đây
+                self.player_id = str(self.player_db_id)  # Gán player_id ngay tại đây
                 self.username = username
                 print(f"✅ Đăng nhập thành công! ID: {self.player_db_id}")
                 return True
@@ -138,15 +138,15 @@ class TankGame:
     def connect(self):
         """Kết nối tới server với xác thực"""
         try:
-            # Connect TCP socket
+            # Kết nối TCP
             self.tcp_socket.connect((self.host, GameConstants.TCP_PORT))
             
-            # Xác thực
+            # Thực hiện xác thực
             if not self.authenticate():
                 self.running = False
                 return
                 
-            # Khởi tạo renderer trước
+            # Khởi tạo renderer trước khi bắt đầu vòng lặp đồ họa
             self.renderer = GameRenderer(self.username)
             self.renderer.initialize()
             self.renderer.set_player_id(self.player_id)  # Cập nhật player_id trong renderer
@@ -158,7 +158,7 @@ class TankGame:
             
             print(f"Connected as Player {self.player_id} ({self.username})")
             
-            # Bắt đầu các thread nhận dữ liệu
+            # Bắt đầu các thread để nhận dữ liệu
             threading.Thread(target=self.receive_udp_data, daemon=True).start()
             threading.Thread(target=self.receive_tcp_data, daemon=True).start()
             
@@ -175,7 +175,7 @@ class TankGame:
         self.waiting_for_restart = False
         self.last_fire_time = 0
         self.ready = False
-        # Reset vị trí player
+    # Đặt lại vị trí người chơi
         self.player_x = 400
         self.player_y = 300
         self.player_angle = 0
@@ -221,18 +221,18 @@ class TankGame:
                 game_state = json.loads(data.decode())
                 self.game_state = game_state
                 
-                # Update ammo count và vị trí từ server
+                # Cập nhật số đạn và vị trí từ server
                 if self.game_state and 'players' in self.game_state:
                     player_data = self.game_state['players'].get(self.player_id)
                     if player_data:
                         if 'ammo' in player_data:
                             self.ammo_count = player_data['ammo']
-                        # Cập nhật vị trí từ server để đồng bộ
+                        # Cập nhật vị trí từ server để đồng bộ hoá
                         self.player_x = player_data.get('x', self.player_x)
                         self.player_y = player_data.get('y', self.player_y)
                         self.player_angle = player_data.get('angle', self.player_angle)
                 
-                # Kiểm tra game over condition
+                # Kiểm tra điều kiện kết thúc trận
                 if 'game_over' in self.game_state and self.game_state['game_over']:
                     self.game_over = True
                     self.winner_id = self.game_state.get('winner_id')
@@ -285,14 +285,24 @@ class TankGame:
 
     def start_reload(self):
         """Bắt đầu quá trình reload"""
-        if not self.reloading and self.ammo_count < GameConstants.MAX_AMMO and self.game_started and not self.game_over:
+    # Chỉ cho phép nạp đạn khi trận đấu đang chạy và chưa ở trạng thái nạp.
+    # Giữ kiểm tra rằng số đạn phải nhỏ hơn tối đa để tránh nạp thừa.
+        if not self.reloading and self.game_started and not self.game_over and self.ammo_count < GameConstants.MAX_AMMO:
             self.reloading = True
             self.reload_start_time = time.time()
-            # Gửi reload command tới server
-            self.send_udp_data({
+            # Gửi lệnh nạp đạn qua UDP (real-time) và qua TCP như fallback đáng tin cậy
+            reload_msg = {
                 'id': self.player_id,
                 'reload': True
-            })
+            }
+            self.send_udp_data(reload_msg)
+            try:
+                # Gửi một marker TCP ngắn để server nhận được ý định nạp đạn một cách đáng tin cậy
+                # Server sẽ chấp nhận chuỗi thuần 'RELOAD' như fallback
+                if self.tcp_socket:
+                    self.tcp_socket.send(b'RELOAD')
+            except Exception as e:
+                print(f"Error sending reload via TCP fallback: {e}")
 
     def update_reload(self):
         """Cập nhật trạng thái reload"""
@@ -301,10 +311,10 @@ class TankGame:
             elapsed = current_time - self.reload_start_time
             
             if elapsed >= GameConstants.RELOAD_DURATION:
-                # Reload complete
+                # Hoàn tất nạp đạn
                 self.ammo_count = GameConstants.MAX_AMMO
                 self.reloading = False
-                # Gửi ammo update tới server
+                # Gửi cập nhật số đạn tới server
                 self.send_udp_data({
                     'id': self.player_id,
                     'ammo_update': self.ammo_count
@@ -316,7 +326,7 @@ class TankGame:
         """Xử lý di chuyển của player"""
         keys = pygame.key.get_pressed()
         
-        # Handle movement
+    # Xử lý di chuyển
         if keys[pygame.K_LEFT]:
             self.player_angle -= 5
         if keys[pygame.K_RIGHT]:
@@ -328,7 +338,7 @@ class TankGame:
             self.player_x -= 5 * math.cos(math.radians(self.player_angle))
             self.player_y -= 5 * math.sin(math.radians(self.player_angle))
         
-        # Giới hạn trong màn hình
+    # Giới hạn vị trí trong khu vực màn hình
         self.player_x = max(20, min(GameConstants.SCREEN_WIDTH - 20, self.player_x))
         self.player_y = max(20, min(GameConstants.SCREEN_HEIGHT - 20, self.player_y))
 
@@ -362,10 +372,10 @@ class TankGame:
         while self.running:
             current_time = time.time()
             
-            # Update reload status
+            # Cập nhật trạng thái nạp đạn
             self.update_reload()
             
-            # Handle events
+            # Xử lý sự kiện Pygame
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
@@ -378,30 +388,30 @@ class TankGame:
                         self.send_restart_request()
                         self.waiting_for_restart = True
 
-            # If game hasn't started, show waiting screen
+            # Nếu trận chưa bắt đầu, hiển thị màn chờ
             if not self.game_started:
                 self.renderer.draw_waiting_screen(self.game_state, self.ready, self.waiting_for_players)
                 self.renderer.update_display()
                 clock.tick(30)
                 continue
 
-            # Normal game input (when game is running and not over)
+            # Xử lý input khi game đang chạy và chưa kết thúc
             if self.game_started and not self.game_over:
                 # Xử lý di chuyển
                 self.handle_movement()
                 
-                # Xử lý bắn đạn
+                # Xử lý hành vi bắn đạn
                 self.handle_firing(current_time)
                 
-                # Gửi cập nhật vị trí cho server
+                # Gửi cập nhật vị trí tới server
                 self.send_player_update()
 
-            # Draw game
+            # Vẽ trò chơi
             self.renderer.screen.fill((0, 0, 0))
             if self.game_state:
                 self.renderer.draw_game_state(self.game_state)
             
-            # Draw HUD
+            # Vẽ HUD
             self.renderer.draw_hud(
                 self.ammo_count, 
                 GameConstants.MAX_AMMO,
@@ -411,7 +421,7 @@ class TankGame:
                 self.game_over
             )
             
-            # Draw game over screen if game is over
+            # Vẽ màn hình kết thúc nếu trận đấu đã kết thúc
             if self.game_over:
                 self.renderer.draw_game_over(self.winner_id, self.waiting_for_restart)
             

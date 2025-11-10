@@ -9,7 +9,7 @@ from common.messages import GameConstants
 class GameRenderer:
     def __init__(self, username):
         self.player_name = username
-        self.player_id = None  # Will be set later
+        self.player_id = None  # Sẽ được gán sau
         self.screen = None
         self.font = None
         self.big_font = None
@@ -19,24 +19,25 @@ class GameRenderer:
         self.current_size = (self.original_width, self.original_height)
         self.backgrounds = []
         self.current_background = None
-        
+        self.scaled_background = None
+        self.current_map_id = 0  # ID của bản đồ hiện tại
+        self.map_initialized = False
+
     def set_player_id(self, player_id):
-        """Set the player ID after receiving it from server"""
+        """Gán player ID sau khi nhận từ server"""
         self.player_id = player_id
         pygame.display.set_caption(f"Tank Battle - {self.player_name} (Player {self.player_id})")
         self.scaled_background = None
-        self.current_map_id = 0  # ID của map hiện tại
-        self.map_initialized = False
-        
+
     def initialize(self):
-        """Khởi tạo pygame và fonts"""
+        """Khởi tạo pygame và font"""
         pygame.init()
         self.screen = pygame.display.set_mode((self.original_width, self.original_height), pygame.RESIZABLE)
         pygame.display.set_caption(f"Tank Battle - Player {self.player_id}")
         self.font = pygame.font.SysFont(None, 36)
         self.big_font = pygame.font.SysFont(None, 72)
-        
-        # Load backgrounds
+
+        # Tải các ảnh nền (background)
         self.load_backgrounds()
         # Đặt map mặc định ban đầu
         self.set_map(0)  # Map 0 làm mặc định
@@ -52,7 +53,7 @@ class GameRenderer:
             return True
         else:
             print(f"Invalid map_id: {map_id}, available: 0-{len(self.backgrounds)-1}")
-            # Fallback to first map
+            # Dự phòng: chuyển về map đầu tiên
             if self.backgrounds:
                 self.current_map_id = 0
                 self.current_background = self.backgrounds[0]
@@ -67,7 +68,7 @@ class GameRenderer:
     def load_backgrounds(self):
         """Load tất cả background images từ thư mục ui/"""
         background_dir = "ui"
-        # Tạo thư mục nếu chưa tồn tại
+    # Tạo thư mục nếu chưa tồn tại
         if not os.path.exists(background_dir):
             os.makedirs(background_dir)
             print(f"Created directory: {background_dir}")
@@ -89,7 +90,7 @@ class GameRenderer:
                 print(f"Error loading background {bg_file}: {e}")
                 self.create_default_background(background_files.index(bg_file))
         
-        # Đảm bảo có ít nhất 3 backgrounds
+    # Đảm bảo có ít nhất 3 ảnh nền
         while len(self.backgrounds) < 3:
             self.create_default_background(len(self.backgrounds))
         
@@ -97,32 +98,32 @@ class GameRenderer:
     
     def create_default_background(self, map_id):
         """Tạo background mặc định dựa trên map_id"""
-        # Màu sắc khác nhau cho mỗi map
+    # Màu sắc khác nhau cho mỗi bản đồ
         colors = [
-            (30, 30, 60),   # Map 1: Xanh đậm
-            (40, 60, 30),   # Map 2: Xanh lá
-            (60, 30, 40)    # Map 3: Tím
+            (30, 30, 60),   # Bản đồ 1: Xanh đậm
+            (40, 60, 30),   # Bản đồ 2: Xanh lá
+            (60, 30, 40)    # Bản đồ 3: Tím
         ]
         
         color = colors[map_id] if map_id < len(colors) else (50, 50, 50)
         bg = pygame.Surface((self.original_width, self.original_height))
         bg.fill(color)
         
-        # Thêm pattern đặc trưng cho mỗi map
+    # Vẽ họa tiết đặc trưng cho mỗi bản đồ
         for i in range(0, self.original_width, 40):
             for j in range(0, self.original_height, 40):
-                if map_id == 0:  # Map 1: chấm tròn
+                if map_id == 0:  # Bản đồ 1: chấm tròn
                     pygame.draw.circle(bg, (color[0] + 20, color[1] + 20, color[2] + 20), 
                                      (i + 20, j + 20), 3)
-                elif map_id == 1:  # Map 2: hình vuông
+                elif map_id == 1:  # Bản đồ 2: hình vuông
                     pygame.draw.rect(bg, (color[0] + 20, color[1] + 20, color[2] + 20), 
                                    (i + 15, j + 15, 10, 10))
-                else:  # Map 3: hình thoi
+                else:  # Bản đồ 3: hình thoi
                     points = [(i + 20, j + 10), (i + 30, j + 20), 
                              (i + 20, j + 30), (i + 10, j + 20)]
                     pygame.draw.polygon(bg, (color[0] + 20, color[1] + 20, color[2] + 20), points)
         
-        # Thêm text để nhận biết map
+    # Thêm chữ để nhận biết bản đồ
         font = pygame.font.SysFont(None, 48)
         text = font.render(f"MAP {map_id + 1}", True, (255, 255, 255))
         text_rect = text.get_rect(center=(self.original_width // 2, self.original_height // 2))
@@ -179,37 +180,37 @@ class GameRenderer:
         if self.scaled_background:
             self.screen.blit(self.scaled_background, (0, 0))
         else:
-            # Fallback: màu nền mặc định
+            # Dự phòng: màu nền mặc định
             self.screen.fill((0, 0, 30))
     
     def draw_waiting_screen(self, game_state, ready, waiting_for_players):
         """Vẽ màn hình chờ"""
         self.draw_background()
         
-        # Tạo overlay semi-transparent để text dễ đọc hơn
+    # Tạo overlay bán trong suốt để chữ dễ đọc hơn
         overlay = pygame.Surface(self.current_size, pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))  # Đen với độ trong suốt 50%
         self.screen.blit(overlay, (0, 0))
         
         center_x, center_y = self._get_center()
         
-        # Title
+    # Tiêu đề
         title_text = self.big_font.render("TANK BATTLE", True, (255, 255, 0))
         title_rect = title_text.get_rect(center=(center_x, self._scale_value(150, False)))
         self.screen.blit(title_text, title_rect)
         
-        # Player ID
+    # Hiển thị Player ID
         id_text = self.font.render(f"Player ID: {self.player_id}", True, (0, 255, 255))
         id_rect = id_text.get_rect(center=(center_x, self._scale_value(220, False)))
         self.screen.blit(id_text, id_rect)
         
-        # Map info (nếu đã có map)
+    # Thông tin bản đồ (nếu đã có)
         if self.current_background:
             map_text = self.font.render(f"Map: {self.current_map_id + 1}", True, (200, 200, 100))
             map_rect = map_text.get_rect(center=(center_x, self._scale_value(260, False)))
             self.screen.blit(map_text, map_rect)
         
-        # Status message
+    # Thông điệp trạng thái
         if waiting_for_players:
             status_text = self.font.render("Waiting for more players to join...", True, (255, 255, 0))
         elif ready:
@@ -220,14 +221,14 @@ class GameRenderer:
         status_rect = status_text.get_rect(center=(center_x, self._scale_value(300, False)))
         self.screen.blit(status_text, status_rect)
         
-        # Player count info
+    # Thông tin số người chơi
         if game_state and 'players' in game_state:
             player_count = len(game_state['players'])
             count_text = self.font.render(f"Players connected: {player_count}/2", True, (200, 200, 255))
             count_rect = count_text.get_rect(center=(center_x, self._scale_value(340, False)))
             self.screen.blit(count_text, count_rect)
         
-        # Instructions
+    # Hướng dẫn điều khiển
         instructions = [
             "CONTROLS:",
             "ARROW KEYS - Move tank and aim",
@@ -248,12 +249,12 @@ class GameRenderer:
         if not game_state:
             return
         
-        # Vẽ background
+    # Vẽ nền
         self.draw_background()
             
-        # Draw players - SỬA LẠI MÀU SẮC
+    # Vẽ người chơi - SỬA LẠI MÀU SẮC
         for pid, player in game_state['players'].items():
-            # Sửa màu sắc: player hiện tại màu xanh, đối thủ màu đỏ
+            # Sửa màu sắc: người chơi hiện tại màu xanh, đối thủ màu đỏ
             if str(pid) == str(self.player_id):
                 color = (0, 255, 0)  # Xanh lá - player hiện tại
             else:
@@ -263,12 +264,12 @@ class GameRenderer:
             radius = self._scale_value(20)
             pygame.draw.circle(self.screen, color, (int(x), int(y)), int(radius))
             
-            # Draw tank turret
+            # Vẽ tháp pháo
             end_x = x + self._scale_value(25) * math.cos(math.radians(player['angle']))
             end_y = y + self._scale_value(25) * math.sin(math.radians(player['angle']))
             pygame.draw.line(self.screen, color, (x, y), (end_x, end_y), int(self._scale_value(5)))
             
-            # Draw HP bar
+            # Vẽ thanh HP
             bar_width = self._scale_value(50)
             bar_height = self._scale_value(5)
             bar_x = x - self._scale_value(25)
@@ -276,13 +277,13 @@ class GameRenderer:
             pygame.draw.rect(self.screen, (255,0,0), (bar_x, bar_y, bar_width, bar_height))
             pygame.draw.rect(self.screen, (0,255,0), (bar_x, bar_y, self._scale_value(player['hp']/2), bar_height))
 
-        # Draw bullets
+    # Vẽ viên đạn
         for bullet in game_state['bullets']:
             x, y = self._scale_position(bullet['x'], bullet['y'])
             radius = self._scale_value(5)
             pygame.draw.circle(self.screen, (255, 255, 0), (int(x), int(y)), int(radius))
             
-            # Draw bullet trail
+            # Vẽ vệt đạn
             trail_length = self._scale_value(10)
             start_x = x - trail_length * math.cos(math.radians(bullet['angle']))
             start_y = y - trail_length * math.sin(math.radians(bullet['angle']))
@@ -292,18 +293,18 @@ class GameRenderer:
 
     def draw_hud(self, ammo_count, max_ammo, reloading, reload_start_time, last_fire_time, game_over):
         """Vẽ HUD với thông tin game"""
-        # Tạo nền semi-transparent cho HUD
+    # Tạo nền bán trong suốt cho HUD
         hud_bg = pygame.Surface((self._scale_value(300), self._scale_value(120)), pygame.SRCALPHA)
         hud_bg.fill((0, 0, 0, 128))
         self.screen.blit(hud_bg, (self._scale_value(5), self._scale_value(5)))
         
-        # Scale HUD elements based on screen size
+    # Điều chỉnh kích thước phần tử HUD theo kích thước màn hình
         base_x = self._scale_value(15)
         base_y = self._scale_value(15)
         bar_width = self._scale_value(200)
         bar_height = self._scale_value(15)
         
-        # Draw ammo counter
+    # Vẽ bộ đếm đạn
         ammo_color = (255, 255, 255)
         if ammo_count == 0:
             ammo_color = (255, 0, 0)
@@ -313,29 +314,29 @@ class GameRenderer:
         ammo_text = self.font.render(f"Ammo: {ammo_count}/{max_ammo}", True, ammo_color)
         self.screen.blit(ammo_text, (base_x, base_y))
         
-        # Draw map info in HUD
+    # Vẽ thông tin bản đồ trên HUD
         map_text = self.font.render(f"Map: {self.current_map_id + 1}", True, (200, 200, 100))
         self.screen.blit(map_text, (self.current_size[0] - self._scale_value(100), base_y))
         
-        # Draw fire cooldown indicator
+    # Vẽ thanh chỉ báo thời gian hồi bắn
         fire_cooldown_percent = min(1.0, (time.time() - last_fire_time) / GameConstants.FIRE_COOLDOWN)
         pygame.draw.rect(self.screen, (100, 100, 100), (base_x, base_y + self._scale_value(35), bar_width, bar_height))
         pygame.draw.rect(self.screen, (0, 200, 0), (base_x, base_y + self._scale_value(35), bar_width * fire_cooldown_percent, bar_height))
         fire_text = self.font.render("Fire Cooldown", True, (255, 255, 255))
         self.screen.blit(fire_text, (base_x, base_y + self._scale_value(15)))
         
-        # Draw reload indicator
+    # Vẽ chỉ báo nạp đạn
         if reloading:
             reload_progress = min(1.0, (time.time() - reload_start_time) / GameConstants.RELOAD_DURATION)
             pygame.draw.rect(self.screen, (100, 100, 100), (base_x, base_y + self._scale_value(75), bar_width, bar_height))
             pygame.draw.rect(self.screen, (0, 100, 255), (base_x, base_y + self._scale_value(75), bar_width * reload_progress, bar_height))
             
-            # Show reload time remaining
+            # Hiển thị thời gian nạp còn lại
             time_left = GameConstants.RELOAD_DURATION - (time.time() - reload_start_time)
             reload_text = self.font.render(f"Reloading: {time_left:.1f}s", True, (255, 255, 255))
             self.screen.blit(reload_text, (base_x + bar_width + self._scale_value(10), base_y + self._scale_value(75)))
         else:
-            # Draw reload instruction if out of ammo or low ammo
+            # Hiển thị hướng dẫn nạp đạn khi hết đạn hoặc còn ít đạn
             if ammo_count == 0 and not game_over:
                 reload_text = self.font.render("Press R to reload (7s)", True, (255, 255, 0))
                 self.screen.blit(reload_text, (base_x, base_y + self._scale_value(55)))
@@ -345,14 +346,14 @@ class GameRenderer:
 
     def draw_game_over(self, winner_id, waiting_for_restart):
         """Vẽ màn hình game over"""
-        # Semi-transparent overlay
+    # Overlay bán trong suốt
         overlay = pygame.Surface(self.current_size, pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         self.screen.blit(overlay, (0, 0))
         
         center_x, center_y = self._get_center()
         
-        # Determine winner text
+    # Xác định văn bản hiển thị người chiến thắng
         if winner_id == self.player_id:
             winner_text = self.big_font.render("VICTORY!", True, (0, 255, 0))
         elif winner_id is None:
@@ -363,12 +364,12 @@ class GameRenderer:
         text_rect = winner_text.get_rect(center=(center_x, self._scale_value(250, False)))
         self.screen.blit(winner_text, text_rect)
         
-        # Show map info
+    # Hiển thị thông tin bản đồ
         map_text = self.font.render(f"Map: {self.current_map_id + 1}", True, (200, 200, 100))
         map_rect = map_text.get_rect(center=(center_x, self._scale_value(300, False)))
         self.screen.blit(map_text, map_rect)
         
-        # Show restart instruction
+    # Hiển thị hướng dẫn khởi động lại
         if waiting_for_restart:
             restart_text = self.font.render("Waiting for other players...", True, (255, 255, 255))
         else:

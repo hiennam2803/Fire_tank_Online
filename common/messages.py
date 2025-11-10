@@ -1,6 +1,6 @@
 # Định nghĩa các message type và constants
 class MessageTypes:
-    # TCP Messages
+    # Các message TCP
     READY = "READY"
     RESTART = "RESTART"
     GAME_START = "GAME_START"
@@ -8,7 +8,7 @@ class MessageTypes:
     SERVER_FULL = "SERVER_FULL"
     RESTART_ACCEPTED = "RESTART_ACCEPTED"
     
-    # UDP Message keys
+    # Các khóa message UDP
     PLAYER_UPDATE = 'player_update'
     FIRE = 'fire'
     RELOAD = 'reload'

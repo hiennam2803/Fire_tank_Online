@@ -19,7 +19,7 @@ class TankServer:
         self.player_authenticated = {}
         self.game_sessions = {}
         
-        # Bind sockets
+    # Gán (bind) các socket
         self.tcp_socket.bind((self.host, self.tcp_port))
         self.udp_socket.bind((self.host, self.udp_port))
         self.tcp_socket.listen(GameConstants.MAX_PLAYERS)
@@ -32,7 +32,7 @@ class TankServer:
         try:
             # Nhận thông tin đăng nhập từ client
             auth_data = client_socket.recv(1024).decode()
-            print(f"📨 Received auth data: {auth_data}")  # Debug
+            print(f"📨 Received auth data: {auth_data}")  # Gỡ lỗi
             
             auth_info = json.loads(auth_data)
             
@@ -106,24 +106,47 @@ class TankServer:
                     print(f"✅ Player {player_id} UDP port registered: {udp_port}")
 
                 
-                # Main client loop
+                # Vòng lặp chính xử lý client TCP
                 while self.running:
-                    data = client_socket.recv(1024).decode()
-                    if not data:
+                    try:
+                        raw = client_socket.recv(1024)
+                    except (ConnectionResetError, ConnectionAbortedError, OSError) as e:
+                        # Thông báo lỗi nhận TCP (ví dụ WinError 10053) và dọn dẹp kết nối an toàn
+                        print(f"⚠️ Lỗi TCP recv từ {address}: {e}")
                         break
-                        
+
+                    # Nếu client đóng kết nối, recv trả về b''
+                    if not raw:
+                        print(f"🔌 Kết nối TCP đã đóng bởi client {address}")
+                        break
+
+                    try:
+                        data = raw.decode()
+                    except UnicodeDecodeError:
+                        # Nếu không decode được, bỏ qua bản tin này
+                        print(f"⚠️ Không thể decode dữ liệu TCP từ {address}, bỏ qua")
+                        continue
+
                     if data == MessageTypes.READY:
                         self.game_engine.set_player_ready(player_id)
                         print(f"Player {player_id} is ready")
                         if self.game_engine.check_game_start():
                             self.start_game()
-                            
+
                     elif data == MessageTypes.RESTART:
                         print(f"Player {player_id} requested restart")
                         if self.game_engine.handle_restart_request(player_id):
                             self.restart_game()
                         else:
                             client_socket.send(MessageTypes.RESTART_ACCEPTED.encode())
+
+                    elif data == 'RELOAD':
+                        # Chuỗi TCP thuần cung cấp fallback cho lệnh nạp đạn (client có thể gửi ngoài UDP)
+                        print(f"Player {player_id} requested reload via TCP fallback")
+                        try:
+                            self.game_engine.process_player_message(player_id, {'reload': True})
+                        except Exception as e:
+                            print(f"Error processing TCP reload for {player_id}: {e}")
                         
         except json.JSONDecodeError as e:
             print(f"❌ JSON decode error: {e}")
