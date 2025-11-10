@@ -28,18 +28,7 @@ cd Fire_tank_Online
 ```
 
 2. Cài dependencies (khuyến nghị dùng virtual environment nhưng không bắt buộc)
-
-2a Cách an toàn (khuyến nghị): tạo virtualenv và cài tất cả:
-```powershell
-python -m venv .venv
-# nếu PowerShell chặn script, cho phép tạm thời trong session hiện tại:
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
 ```
-
-2b Nếu bạn KHÔNG muốn dùng virtualenv (cài trực tiếp vào Python hệ thống):
 ```powershell
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
