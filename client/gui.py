@@ -52,6 +52,108 @@ class GameRenderer:
         self.load_backgrounds()
         # Đặt map mặc định ban đầu
         self.set_map(0)  # Map 0 làm mặc định
+        # Tải logo nếu có
+        try:
+            logo_path = os.path.join('ui', 'logo.png')
+            if os.path.exists(logo_path):
+                self.logo = pygame.image.load(logo_path).convert_alpha()
+            else:
+                self.logo = None
+        except Exception:
+            self.logo = None
+
+    def show_auth_menu(self):
+        """Hiển thị màn hình chọn Login hoặc Register. Trả về 'login' hoặc 'register'"""
+        if HAVE_PYGAME_GUI and self.screen is not None:
+            # Simple pygame_gui menu
+            manager = pygame_gui.UIManager(self.current_size)
+            clock = pygame.time.Clock()
+            cx, cy = self._get_center()
+            w = 400; h = 120
+            left = cx - w//2
+            top = cy - h//2
+
+            # draw rounded backgrounds for the buttons so they look more modern
+            login_btn = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((left + 20, top + 20), (160, 80)), text='Login', manager=manager)
+            reg_btn = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((left + 220, top + 20), (160, 80)), text='Register', manager=manager)
+
+            running = True
+            choice = 'login'
+            while running:
+                time_delta = clock.tick(60)/1000.0
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        return None
+                    if event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                        if event.ui_element == login_btn:
+                            choice = 'login'
+                            running = False
+                        elif event.ui_element == reg_btn:
+                            choice = 'register'
+                            running = False
+                    manager.process_events(event)
+                manager.update(time_delta)
+                # background + card
+                self._draw_gradient_bg((18,20,30), (6,8,18))
+                self._draw_card((left, top, w, h), color=(18,18,28), border_color=(60,60,70))
+                # draw logo if available
+                if getattr(self, 'logo', None):
+                    logo = pygame.transform.smoothscale(self.logo, (96, 96))
+                    # move logo higher so title and buttons have breathing room
+                    self.screen.blit(logo, logo.get_rect(center=(cx, top - 120)))
+                # Draw title above the buttons with a larger gap
+                title = self.big_font.render('Welcome', True, (255,220,0))
+                self.screen.blit(title, title.get_rect(center=(cx, top - 40)))
+                # draw rounded rects behind GUI buttons to make them visually rounded
+                pygame.draw.rect(self.screen, (70,70,70), pygame.Rect(left + 20, top + 20, 160, 80), border_radius=12)
+                pygame.draw.rect(self.screen, (70,70,70), pygame.Rect(left + 220, top + 20, 160, 80), border_radius=12)
+                manager.draw_ui(self.screen)
+                pygame.display.update()
+            return choice
+        # Fallback custom menu
+        clock = pygame.time.Clock()
+        cx, cy = self._get_center()
+        w = 500; h = 180
+        left = cx - w//2
+        top = cy - h//2
+        running = True
+        choice = 'login'
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mx,my = event.pos
+                    login_rect = pygame.Rect(left + 40, top + 40, 180, 80)
+                    reg_rect = pygame.Rect(left + 280, top + 40, 180, 80)
+                    if login_rect.collidepoint(mx,my):
+                        choice='login'; running=False
+                    if reg_rect.collidepoint(mx,my):
+                        choice='register'; running=False
+
+            self.screen.fill((10,10,20))
+            # Styled background + card
+            self._draw_gradient_bg((18,20,30), (6,8,18))
+            self._draw_card((left, top, w, h), color=(18,18,28), border_color=(60,60,70))
+            # draw logo if available
+            if getattr(self, 'logo', None):
+                logo = pygame.transform.smoothscale(self.logo, (96,96))
+                self.screen.blit(logo, logo.get_rect(center=(cx, top - 120)))
+            # Title above buttons with larger spacing
+            title = self.big_font.render('Welcome', True, (255,220,0))
+            self.screen.blit(title, title.get_rect(center=(cx, top - 40)))
+            # Buttons (rounded)
+            login_rect = pygame.Rect(left + 40, top + 40, 180, 80)
+            reg_rect = pygame.Rect(left + 280, top + 40, 180, 80)
+            pygame.draw.rect(self.screen, (80,80,80), login_rect, border_radius=12)
+            pygame.draw.rect(self.screen, (80,80,80), reg_rect, border_radius=12)
+            ltxt = self.font.render('Login', True, (220,220,220))
+            rtxt = self.font.render('Register', True, (220,220,220))
+            self.screen.blit(ltxt, ltxt.get_rect(center=login_rect.center))
+            self.screen.blit(rtxt, rtxt.get_rect(center=reg_rect.center))
+            pygame.display.flip()
+            clock.tick(30)
+        return choice
 
     def _draw_input_box(self, rect, text, active=False, password=False):
         """Vẽ hộp nhập liệu đơn giản và trả về rect để xử lý sự kiện"""
@@ -70,152 +172,75 @@ class GameRenderer:
         txt_rect = txt_surf.get_rect(midleft=(rect.x + 8, rect.centery))
         self.screen.blit(txt_surf, txt_rect)
 
+    def _draw_gradient_bg(self, top_color=(20,24,40), bottom_color=(6,8,18)):
+        """Vẽ background gradient dọc từ top_color xuống bottom_color."""
+        w, h = self.current_size
+        grad = pygame.Surface((1, h)).convert_alpha()
+        for y in range(h):
+            t = y / max(1, h - 1)
+            r = int(top_color[0] * (1 - t) + bottom_color[0] * t)
+            g = int(top_color[1] * (1 - t) + bottom_color[1] * t)
+            b = int(top_color[2] * (1 - t) + bottom_color[2] * t)
+            grad.set_at((0, y), (r, g, b))
+        grad = pygame.transform.scale(grad, (w, h))
+        self.screen.blit(grad, (0, 0))
+
+    def _draw_card(self, rect, color=(18,18,28), radius=10, border_color=None):
+        """Vẽ thẻ (card) nền để chứa form với bo góc."""
+        s = pygame.Surface((rect[2], rect[3]), pygame.SRCALPHA)
+        s.fill((0, 0, 0, 0))
+        pygame.draw.rect(s, color, (0, 0, rect[2], rect[3]), border_radius=radius)
+        if border_color:
+            pygame.draw.rect(s, border_color, (0, 0, rect[2], rect[3]), 2, border_radius=radius)
+        self.screen.blit(s, (rect[0], rect[1]))
+
     def show_login_screen(self):
         """Hiển thị màn hình đăng nhập / đăng ký. Nếu `pygame_gui` có sẵn sẽ dùng widget đẹp hơn.
         Trả về dict với host, type, username, password, name
         """
-        # Nếu pygame_gui có sẵn và pygame đã được initialize, dùng GUI nâng cao
-        if HAVE_PYGAME_GUI and self.screen is not None:
+        # Nếu có màn hình, hiển thị menu lựa chọn trước (Login / Register)
+        selection = None
+        if self.screen is not None:
             try:
-                return self._show_login_with_pygame_gui()
+                selection = self.show_auth_menu()
             except Exception:
-                # Nếu gui nâng cao lỗi, fallback về UI cũ
-                print("Warning: pygame_gui login failed, falling back to builtin login UI")
-        # Các trường input
-        host = ''
-        username = ''
-        password = ''
-        name = ''
-        auth_type = 'login'  # hoặc 'register'
+                selection = None
 
-        active = 0  # 0:host,1:username,2:password,3:name
-        clock = pygame.time.Clock()
-        running = True
+        # Loop: show menu, then page; allow pages to return {'action':'back'} to re-open menu
+        while True:
+            selection = None
+            if self.screen is not None:
+                try:
+                    selection = self.show_auth_menu()
+                except Exception:
+                    selection = None
 
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return None
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_TAB:
-                        active = (active + 1) % 4
-                    elif event.key == pygame.K_RETURN:
-                        # Nếu đang đăng nhập, ignore name field
-                        if auth_type == 'login' or (auth_type == 'register' and username and password):
-                            running = False
-                    elif event.key == pygame.K_BACKSPACE:
-                        if active == 0 and host:
-                            host = host[:-1]
-                        elif active == 1 and username:
-                            username = username[:-1]
-                        elif active == 2 and password:
-                            password = password[:-1]
-                        elif active == 3 and name:
-                            name = name[:-1]
-                    elif event.key == pygame.K_F1:
-                        auth_type = 'login'
-                    elif event.key == pygame.K_F2:
-                        auth_type = 'register'
+            # If user closed the menu
+            if selection is None:
+                return None
+
+            # Choose GUI variant
+            if HAVE_PYGAME_GUI and self.screen is not None:
+                try:
+                    if selection == 'register':
+                        res = self._show_register_with_pygame_gui()
                     else:
-                        ch = event.unicode
-                        if ch:
-                            if active == 0:
-                                host += ch
-                            elif active == 1:
-                                username += ch
-                            elif active == 2:
-                                password += ch
-                            elif active == 3:
-                                name += ch
+                        res = self._show_login_with_pygame_gui()
+                except Exception:
+                    print("Warning: pygame_gui login failed, falling back to builtin login UI")
+                    res = None
+            else:
+                if selection == 'register':
+                    res = self._show_register_page_custom()
+                else:
+                    res = self._show_login_page_custom()
 
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    mx, my = event.pos
-                    # tính active theo vị trí (đơn giản)
-                    # Host box
-                    hw = 400; hh = 40
-                    cx, cy = self._get_center()
-                    start_x = cx - hw//2
-                    y0 = cy - 120
-                    boxes = [pygame.Rect(start_x, y0, hw, hh),
-                             pygame.Rect(start_x, y0 + 60, hw, hh),
-                             pygame.Rect(start_x, y0 + 120, hw, hh),
-                             pygame.Rect(start_x, y0 + 180, hw, hh)]
-                    for i, r in enumerate(boxes):
-                        if r.collidepoint(mx, my):
-                            active = i
-
-            # Vẽ UI
-            self.screen.fill((10, 10, 30))
-            title = self.big_font.render("Fire Tank - Login", True, (255, 220, 0))
-            tx, ty = self._get_center()
-            self.screen.blit(title, title.get_rect(center=(tx, 80)))
-
-            hw = 400; hh = 40
-            start_x = tx - hw//2
-            y0 = 160
-
-            # Host
-            host_rect = pygame.Rect(start_x, y0, hw, hh)
-            self._draw_input_box(host_rect, host, active == 0, password=False)
-            host_label = self.font.render("Server IP (hoac IP, de trong = localhost)", True, (200,200,200))
-            self.screen.blit(host_label, (start_x, y0 - 28))
-            if not host and active != 0:
-                ph = self.small_font.render("Vi du: localhost hoặc 192.168.1.2", True, (120,120,120))
-                # ensure placeholder stays inside the input rect
-                ph_pos = (host_rect.x + 8, host_rect.y + (host_rect.height - ph.get_height()) // 2)
-                self.screen.blit(ph, ph_pos)
-
-            # Username
-            user_rect = pygame.Rect(start_x, y0 + 60, hw, hh)
-            self._draw_input_box(user_rect, username, active == 1)
-            user_label = self.font.render("Ten tai khoan", True, (200,200,200))
-            self.screen.blit(user_label, (start_x, y0 + 60 - 28))
-            if not username and active != 1:
-                ph = self.small_font.render("Ten dang nhap (vi du: player1)", True, (120,120,120))
-                ph_pos = (user_rect.x + 8, user_rect.y + (user_rect.height - ph.get_height()) // 2)
-                self.screen.blit(ph, ph_pos)
-
-            # Password
-            pass_rect = pygame.Rect(start_x, y0 + 120, hw, hh)
-            self._draw_input_box(pass_rect, password, active == 2, password=True)
-            pass_label = self.font.render("Mat khau", True, (200,200,200))
-            self.screen.blit(pass_label, (start_x, y0 + 120 - 28))
-            if not password and active != 2:
-                ph = self.small_font.render("Mat khau (an khi go)", True, (120,120,120))
-                ph_pos = (pass_rect.x + 8, pass_rect.y + (pass_rect.height - ph.get_height()) // 2)
-                self.screen.blit(ph, ph_pos)
-
-            # Display name (for register)
-            name_rect = pygame.Rect(start_x, y0 + 180, hw, hh)
-            self._draw_input_box(name_rect, name, active == 3)
-            name_label = self.font.render("Ten hien thi (dang ky)", True, (180,180,180))
-            self.screen.blit(name_label, (start_x, y0 + 180 - 28))
-            if not name and active != 3:
-                ph = self.small_font.render("Ten hien thi se hien trong tran", True, (120,120,120))
-                ph_pos = (name_rect.x + 8, name_rect.y + (name_rect.height - ph.get_height()) // 2)
-                self.screen.blit(ph, ph_pos)
-
-            # Auth type instructions
-            info = self.font.render("Press F1 to Login, F2 to Register. Press ENTER to submit.", True, (220,220,220))
-            self.screen.blit(info, info.get_rect(center=(tx, y0 + 260)))
-
-            type_text = self.font.render(f"Mode: {auth_type.upper()}", True, (255,255,0))
-            self.screen.blit(type_text, (start_x, y0 + 260 + 30))
-
-            pygame.display.flip()
-            clock.tick(30)
-
-        # Nếu host rỗng, dùng localhost
-        if not host or host.strip() == '':
-            host = 'localhost'
-
-        return {
-            'host': host.strip(),
-            'type': auth_type,
-            'username': username.strip(),
-            'password': password,
-            'name': name.strip() if name.strip() else None
-        }
+            # None = closed; {'action':'back'} = go back to selection; otherwise return result
+            if res is None:
+                return None
+            if isinstance(res, dict) and res.get('action') == 'back':
+                continue
+            return res
 
     def _show_login_with_pygame_gui(self):
         """Hiển thị màn hình đăng nhập bằng pygame_gui. Trả về dict giống show_login_screen."""
@@ -257,9 +282,15 @@ class GameRenderer:
             text='Login',
             manager=manager
         )
-        register_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((left + 40 + (box_w - 60) // 2, top + 190), ((box_w - 60) // 2, 40)),
-            text='Register',
+        # Use a single Login button on the login page (Register is on the separate page)
+        login_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((left + 20, top + 190), (box_w - 40, 40)),
+            text='Login',
+            manager=manager
+        )
+        back_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((left + 20, top + 20), (80, 30)),
+            text='Back',
             manager=manager
         )
 
@@ -280,19 +311,12 @@ class GameRenderer:
                     return None
                 if event.type == pygame.USEREVENT:
                     if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                        if event.ui_element == back_button:
+                            return {'action': 'back'}
                         if event.ui_element == login_button:
                             result = {
                                 'host': (host_input.get_text() or 'localhost').strip(),
                                 'type': 'login',
-                                'username': username_input.get_text().strip(),
-                                'password': password_input.get_text(),
-                                'name': None
-                            }
-                            running = False
-                        elif event.ui_element == register_button:
-                            result = {
-                                'host': (host_input.get_text() or 'localhost').strip(),
-                                'type': 'register',
                                 'username': username_input.get_text().strip(),
                                 'password': password_input.get_text(),
                                 'name': None
@@ -304,26 +328,397 @@ class GameRenderer:
             manager.update(time_delta)
 
             # Draw background card
-            self.screen.fill((12, 12, 18))
-            pygame.draw.rect(self.screen, (18, 18, 28), (left, top, box_w, box_h), border_radius=8)
-            # Title
+            # Styled background
+            self._draw_gradient_bg((24, 28, 48), (6, 8, 18))
+            # Card
+            self._draw_card((left, top, box_w, box_h), color=(22, 22, 30), border_color=(70,70,80))
+            # Title with shadow
+            shadow = self.big_font.render("Fire Tank", True, (10, 10, 10))
+            self.screen.blit(shadow, shadow.get_rect(center=(cx + 2, top + 32)))
             self.screen.blit(title_surf, title_surf.get_rect(center=(cx, top + 30)))
             manager.draw_ui(self.screen)
 
             
             try:
                 if host_input.get_text() == '':
-                    ph = self.small_font.render('Ví dụ: 127.0.0.1 hoặc 192.168.1.2', True, (140, 140, 140))
+                    ph = self.small_font.render('Ví dụ: 127.0.0.1 hoặc 192.168.1.2', True, (160, 160, 170))
                     self.screen.blit(ph, (left + 26, top + 60 + (36 - ph.get_height()) // 2))
                 if username_input.get_text() == '':
-                    ph = self.small_font.render('Tên đăng nhập (ví dụ: player1)', True, (140, 140, 140))
+                    ph = self.small_font.render('Tên đăng nhập (ví dụ: player1)', True, (160, 160, 170))
                     self.screen.blit(ph, (left + 26, top + 100 + (36 - ph.get_height()) // 2))
                 if password_input.get_text() == '':
-                    ph = self.small_font.render('Mật khẩu', True, (140, 140, 140))
+                    ph = self.small_font.render('Mật khẩu', True, (160, 160, 170))
                     self.screen.blit(ph, (left + 26, top + 140 + (36 - ph.get_height()) // 2))
             except Exception:
                 
                 pass
+            pygame.display.update()
+
+        return result
+    
+    def _show_login_page_custom(self):
+        """Custom pygame login page (host + username + password)."""
+        host = ''
+        username = ''
+        password = ''
+
+        active = 0  # 0:host,1:username,2:password
+        clock = pygame.time.Clock()
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return {'action': 'back'}
+                    if event.key == pygame.K_TAB:
+                        active = (active + 1) % 3
+                    elif event.key == pygame.K_RETURN:
+                        if username and password:
+                            running = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        if active == 0 and host:
+                            host = host[:-1]
+                        elif active == 1 and username:
+                            username = username[:-1]
+                        elif active == 2 and password:
+                            password = password[:-1]
+                    else:
+                        ch = event.unicode
+                        if ch:
+                            if active == 0:
+                                host += ch
+                            elif active == 1:
+                                username += ch
+                            elif active == 2:
+                                password += ch
+
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    mx, my = event.pos
+                    hw = 400; hh = 40
+                    cx, cy = self._get_center()
+                    start_x = cx - hw//2
+                    y0 = 160
+                    boxes = [pygame.Rect(start_x, y0, hw, hh),
+                             pygame.Rect(start_x, y0 + 60, hw, hh),
+                             pygame.Rect(start_x, y0 + 120, hw, hh)]
+                    for i, r in enumerate(boxes):
+                        if r.collidepoint(mx, my):
+                            active = i
+                    # Back button area
+                    back_rect = pygame.Rect(start_x - 100, y0 - 48, 80, 30)
+                    if back_rect.collidepoint(mx, my):
+                        return {'action': 'back'}
+
+            # Draw
+            # Gradient background + card
+            self._draw_gradient_bg((24, 28, 48), (6, 8, 18))
+            title = self.big_font.render("Fire Tank - Login", True, (255, 220, 0))
+            tx, ty = self._get_center()
+            # card
+            hw = 400; hh = 40
+            start_x = tx - hw//2
+            y0 = 160
+            card_h = 320
+            self._draw_card((start_x - 40, y0 - 80, hw + 80, card_h), color=(22,22,30), border_color=(60,60,70))
+            # title with shadow
+            shadow = self.big_font.render("Fire Tank - Login", True, (10,10,10))
+            self.screen.blit(shadow, shadow.get_rect(center=(tx + 2, 82)))
+            self.screen.blit(title, title.get_rect(center=(tx, 80)))
+
+            hw = 400; hh = 40
+            start_x = tx - hw//2
+            y0 = 160
+
+            host_rect = pygame.Rect(start_x, y0, hw, hh)
+            self._draw_input_box(host_rect, host, active == 0, password=False)
+            host_label = self.font.render("Server IP (hoac IP, de trong = localhost)", True, (200,200,200))
+            self.screen.blit(host_label, (start_x, y0 - 28))
+            if not host and active != 0:
+                ph = self.small_font.render("Vi du: localhost hoặc 192.168.1.2", True, (120,120,120))
+                ph_pos = (host_rect.x + 8, host_rect.y + (host_rect.height - ph.get_height()) // 2)
+                self.screen.blit(ph, ph_pos)
+
+            user_rect = pygame.Rect(start_x, y0 + 60, hw, hh)
+            self._draw_input_box(user_rect, username, active == 1)
+            user_label = self.font.render("Ten tai khoan", True, (200,200,200))
+            self.screen.blit(user_label, (start_x, y0 + 60 - 28))
+            if not username and active != 1:
+                ph = self.small_font.render("Ten dang nhap (vi du: player1)", True, (120,120,120))
+                ph_pos = (user_rect.x + 8, user_rect.y + (user_rect.height - ph.get_height()) // 2)
+                self.screen.blit(ph, ph_pos)
+
+            pass_rect = pygame.Rect(start_x, y0 + 120, hw, hh)
+            self._draw_input_box(pass_rect, password, active == 2, password=True)
+            pass_label = self.font.render("Mat khau", True, (200,200,200))
+            self.screen.blit(pass_label, (start_x, y0 + 120 - 28))
+            if not password and active != 2:
+                ph = self.small_font.render("Mat khau (an khi go)", True, (120,120,120))
+                ph_pos = (pass_rect.x + 8, pass_rect.y + (pass_rect.height - ph.get_height()) // 2)
+                self.screen.blit(ph, ph_pos)
+
+            info = self.font.render("Enter to submit. Click fields to focus.", True, (220,220,220))
+            self.screen.blit(info, info.get_rect(center=(tx, y0 + 220)))
+
+            # Draw Back button
+            back_rect = pygame.Rect(start_x - 100, y0 - 48, 80, 30)
+            pygame.draw.rect(self.screen, (80,80,80), back_rect)
+            btxt = self.small_font.render('Back', True, (230,230,230))
+            self.screen.blit(btxt, btxt.get_rect(center=back_rect.center))
+
+            pygame.display.flip()
+            clock.tick(30)
+
+        if not host or host.strip() == '':
+            host = 'localhost'
+        return {
+            'host': host.strip(),
+            'type': 'login',
+            'username': username.strip(),
+            'password': password,
+            'name': None
+        }
+
+    def _show_register_page_custom(self):
+        """Custom pygame register page (host + username + password + display name)."""
+        host = ''
+        username = ''
+        password = ''
+        name = ''
+
+        active = 0  # 0:host,1:username,2:password,3:name
+        clock = pygame.time.Clock()
+        running = True
+
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return {'action': 'back'}
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_TAB:
+                        active = (active + 1) % 4
+                    elif event.key == pygame.K_RETURN:
+                        if username and password and name:
+                            running = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        if active == 0 and host:
+                            host = host[:-1]
+                        elif active == 1 and username:
+                            username = username[:-1]
+                        elif active == 2 and password:
+                            password = password[:-1]
+                        elif active == 3 and name:
+                            name = name[:-1]
+                    else:
+                        ch = event.unicode
+                        if ch:
+                            if active == 0:
+                                host += ch
+                            elif active == 1:
+                                username += ch
+                            elif active == 2:
+                                password += ch
+                            elif active == 3:
+                                name += ch
+
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    mx, my = event.pos
+                    hw = 400; hh = 40
+                    cx, cy = self._get_center()
+                    start_x = cx - hw//2
+                    y0 = 160
+                    boxes = [pygame.Rect(start_x, y0, hw, hh),
+                             pygame.Rect(start_x, y0 + 60, hw, hh),
+                             pygame.Rect(start_x, y0 + 120, hw, hh),
+                             pygame.Rect(start_x, y0 + 180, hw, hh)]
+                    for i, r in enumerate(boxes):
+                        if r.collidepoint(mx, my):
+                            active = i
+                    # Back button
+                    back_rect = pygame.Rect(start_x - 100, y0 - 48, 80, 30)
+                    if back_rect.collidepoint(mx, my):
+                        return {'action': 'back'}
+
+            # Draw
+            self.screen.fill((10, 10, 30))
+            title = self.big_font.render("Fire Tank - Register", True, (255, 220, 0))
+            tx, ty = self._get_center()
+            self.screen.blit(title, title.get_rect(center=(tx, 80)))
+
+            hw = 400; hh = 40
+            start_x = tx - hw//2
+            y0 = 160
+
+            host_rect = pygame.Rect(start_x, y0, hw, hh)
+            self._draw_input_box(host_rect, host, active == 0, password=False)
+            host_label = self.font.render("Server IP (hoac IP, de trong = localhost)", True, (200,200,200))
+            self.screen.blit(host_label, (start_x, y0 - 28))
+            if not host and active != 0:
+                ph = self.small_font.render("Vi du: localhost hoặc 192.168.1.2", True, (120,120,120))
+                ph_pos = (host_rect.x + 8, host_rect.y + (host_rect.height - ph.get_height()) // 2)
+                self.screen.blit(ph, ph_pos)
+
+            user_rect = pygame.Rect(start_x, y0 + 60, hw, hh)
+            self._draw_input_box(user_rect, username, active == 1)
+            user_label = self.font.render("Ten tai khoan", True, (200,200,200))
+            self.screen.blit(user_label, (start_x, y0 + 60 - 28))
+            if not username and active != 1:
+                ph = self.small_font.render("Ten dang nhap (vi du: player1)", True, (120,120,120))
+                ph_pos = (user_rect.x + 8, user_rect.y + (user_rect.height - ph.get_height()) // 2)
+                self.screen.blit(ph, ph_pos)
+
+            pass_rect = pygame.Rect(start_x, y0 + 120, hw, hh)
+            self._draw_input_box(pass_rect, password, active == 2, password=True)
+            pass_label = self.font.render("Mat khau", True, (200,200,200))
+            self.screen.blit(pass_label, (start_x, y0 + 120 - 28))
+            if not password and active != 2:
+                ph = self.small_font.render("Mat khau (an khi go)", True, (120,120,120))
+                ph_pos = (pass_rect.x + 8, pass_rect.y + (pass_rect.height - ph.get_height()) // 2)
+                self.screen.blit(ph, ph_pos)
+
+            name_rect = pygame.Rect(start_x, y0 + 180, hw, hh)
+            self._draw_input_box(name_rect, name, active == 3)
+            name_label = self.font.render("Ten hien thi (dang ky)", True, (180,180,180))
+            self.screen.blit(name_label, (start_x, y0 + 180 - 28))
+            if not name and active != 3:
+                ph = self.small_font.render("Ten hien thi se hien trong tran", True, (120,120,120))
+                ph_pos = (name_rect.x + 8, name_rect.y + (name_rect.height - ph.get_height()) // 2)
+                self.screen.blit(ph, ph_pos)
+
+            # Draw styled buttons area (visual only)
+            btn_w = 160; btn_h = 40
+            login_btn_rect = pygame.Rect(tx - btn_w - 20, y0 + 220, btn_w, btn_h)
+            pygame.draw.rect(self.screen, (70,70,80), login_btn_rect, border_radius=6)
+            ltxt = self.font.render('Login', True, (230,230,230))
+            self.screen.blit(ltxt, ltxt.get_rect(center=login_btn_rect.center))
+
+            pygame.display.flip()
+            back_rect = pygame.Rect(start_x - 100, y0 - 48, 80, 30)
+            pygame.draw.rect(self.screen, (80,80,80), back_rect)
+            btxt = self.small_font.render('Back', True, (230,230,230))
+            self.screen.blit(btxt, btxt.get_rect(center=back_rect.center))
+
+            pygame.display.flip()
+            clock.tick(30)
+
+        if not host or host.strip() == '':
+            host = 'localhost'
+        return {
+            'host': host.strip(),
+            'type': 'register',
+            'username': username.strip(),
+            'password': password,
+            'name': name.strip() if name.strip() else None
+        }
+
+    def _show_register_with_pygame_gui(self):
+        """Pygame_gui variant of register page (adds display name field)."""
+        if not HAVE_PYGAME_GUI:
+            raise RuntimeError("pygame_gui not available")
+
+        manager = pygame_gui.UIManager(self.current_size)
+        clock = pygame.time.Clock()
+
+        cx, cy = self._get_center()
+        box_w = min(600, self.current_size[0] - 100)
+        box_h = 320
+        left = cx - box_w // 2
+        top = cy - box_h // 2
+
+        title_surf = self.big_font.render("Fire Tank", True, (255, 220, 0))
+
+        host_input = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect((left + 20, top + 60), (box_w - 40, 36)),
+            manager=manager,
+            object_id="#host"
+        )
+        username_input = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect((left + 20, top + 100), (box_w - 40, 36)),
+            manager=manager,
+            object_id="#username"
+        )
+        password_input = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect((left + 20, top + 140), (box_w - 40, 36)),
+            manager=manager,
+            object_id="#password"
+        )
+        password_input.set_text_hidden(True)
+
+        name_input = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect((left + 20, top + 180), (box_w - 40, 36)),
+            manager=manager,
+            object_id="#name"
+        )
+
+        register_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((left + 20, top + 230), (box_w - 40, 40)),
+            text='Register',
+            manager=manager
+        )
+        back_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((left + 20, top + 20), (80, 30)),
+            text='Back',
+            manager=manager
+        )
+
+        host_input.set_text('')
+        username_input.set_text('')
+        password_input.set_text('')
+        name_input.set_text('')
+
+        running = True
+        result = None
+        while running:
+            time_delta = clock.tick(60) / 1000.0
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                if event.type == pygame.USEREVENT:
+                    if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                        if event.ui_element == back_button:
+                            return {'action': 'back'}
+                        if event.ui_element == register_button:
+                            result = {
+                                'host': (host_input.get_text() or 'localhost').strip(),
+                                'type': 'register',
+                                'username': username_input.get_text().strip(),
+                                'password': password_input.get_text(),
+                                'name': name_input.get_text().strip() or None
+                            }
+                            running = False
+
+                manager.process_events(event)
+
+            manager.update(time_delta)
+
+            # Styled background + card
+            self._draw_gradient_bg((24, 28, 48), (6, 8, 18))
+            self._draw_card((left, top, box_w, box_h), color=(22,22,30), border_color=(70,70,80))
+            shadow = self.big_font.render("Fire Tank", True, (10, 10, 10))
+            self.screen.blit(shadow, shadow.get_rect(center=(cx + 2, top + 32)))
+            self.screen.blit(title_surf, title_surf.get_rect(center=(cx, top + 30)))
+            manager.draw_ui(self.screen)
+
+            try:
+                if host_input.get_text() == '':
+                    ph = self.small_font.render('Ví dụ: 127.0.0.1 hoặc 192.168.1.2', True, (160,160,170))
+                    self.screen.blit(ph, (left + 26, top + 60 + (36 - ph.get_height()) // 2))
+                if username_input.get_text() == '':
+                    ph = self.small_font.render('Tên đăng nhập (ví dụ: player1)', True, (160,160,170))
+                    self.screen.blit(ph, (left + 26, top + 100 + (36 - ph.get_height()) // 2))
+                if password_input.get_text() == '':
+                    ph = self.small_font.render('Mật khẩu', True, (160,160,170))
+                    self.screen.blit(ph, (left + 26, top + 140 + (36 - ph.get_height()) // 2))
+                if name_input.get_text() == '':
+                    ph = self.small_font.render('Tên hiển thị (ví dụ: Player One)', True, (160,160,170))
+                    self.screen.blit(ph, (left + 26, top + 180 + (36 - ph.get_height()) // 2))
+            except Exception:
+                pass
+
             pygame.display.update()
 
         return result
@@ -471,64 +866,110 @@ class GameRenderer:
     
     def draw_waiting_screen(self, game_state, ready, waiting_for_players):
         """Vẽ màn hình chờ"""
+        # Simplified, clearer layout:
+        # Title top, player id under title, status centered, map thumbnail left, players row under map,
+        # progress bar centered under players, controls block on right.
         self.draw_background()
-        
-    # Tạo overlay bán trong suốt để chữ dễ đọc hơn
         overlay = pygame.Surface(self.current_size, pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))  # Đen với độ trong suốt 50%
+        overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
-        
-        center_x, center_y = self._get_center()
-        
-    # Tiêu đề
-        title_text = self.big_font.render("TANK BATTLE", True, (255, 255, 0))
-        title_rect = title_text.get_rect(center=(center_x, self._scale_value(150, False)))
+
+        cx, cy = self._get_center()
+
+        # Title
+        title_text = self.big_font.render("TANK BATTLE", True, (250, 220, 20))
+        title_rect = title_text.get_rect(center=(cx, int(self._scale_value(100, False))))
         self.screen.blit(title_text, title_rect)
-        
-    # Hiển thị Player ID
-        id_text = self.font.render(f"Player ID: {self.player_id}", True, (0, 255, 255))
-        id_rect = id_text.get_rect(center=(center_x, self._scale_value(220, False)))
-        self.screen.blit(id_text, id_rect)
-        
-    # Thông tin bản đồ (nếu đã có)
-        if self.current_background:
-            map_text = self.font.render(f"Map: {self.current_map_id + 1}", True, (200, 200, 100))
-            map_rect = map_text.get_rect(center=(center_x, self._scale_value(260, False)))
-            self.screen.blit(map_text, map_rect)
-        
-    # Thông điệp trạng thái
+
+        # Player ID just below title
+        id_surf = self.font.render(f"Player ID: {self.player_id}", True, (64, 220, 220))
+        self.screen.blit(id_surf, id_surf.get_rect(center=(cx, int(self._scale_value(150, False)))))
+
+        # Status (centered under player id)
+        t = time.time()
+        dots = int((t * 2) % 4)
+        dot_str = "." * dots
         if waiting_for_players:
-            status_text = self.font.render("Waiting for more players to join...", True, (255, 255, 0))
+            status_str = f"Waiting for more players to join{dot_str}"
+            status_color = (255, 200, 40)
         elif ready:
-            status_text = self.font.render("READY - Waiting for other players...", True, (0, 255, 0))
+            status_str = "READY - Waiting for other players..."
+            status_color = (80, 220, 120)
         else:
-            status_text = self.font.render("Press SPACE to ready up", True, (255, 200, 0))
-        
-        status_rect = status_text.get_rect(center=(center_x, self._scale_value(300, False)))
-        self.screen.blit(status_text, status_rect)
-        
-    # Thông tin số người chơi
-        if game_state and 'players' in game_state:
-            player_count = len(game_state['players'])
-            count_text = self.font.render(f"Players connected: {player_count}/2", True, (200, 200, 255))
-            count_rect = count_text.get_rect(center=(center_x, self._scale_value(340, False)))
-            self.screen.blit(count_text, count_rect)
-        
-    # Hướng dẫn điều khiển
-        instructions = [
-            "CONTROLS:",
-            "ARROW KEYS - Move tank and aim",
-            "SPACE - Fire weapon",
-            "R - Reload ammo",
+            status_str = "Press SPACE to ready up"
+            status_color = (220, 200, 80)
+        status_surf = self.font.render(status_str, True, status_color)
+        self.screen.blit(status_surf, status_surf.get_rect(center=(cx, int(self._scale_value(200, False)))))
+
+        # Map thumbnail on the left
+        thumb_w = int(self._scale_value(260))
+        thumb_h = int(self._scale_value(140, False))
+        thumb_x = cx - int(self._scale_value(320))
+        thumb_y = int(self._scale_value(240, False))
+        if self.current_background:
+            try:
+                thumb = pygame.transform.smoothscale(self.current_background, (thumb_w, thumb_h))
+                self._draw_card((thumb_x - 10, thumb_y - 10, thumb_w + 20, thumb_h + 20), color=(18,18,22), border_color=(60,60,70))
+                self.screen.blit(thumb, (thumb_x, thumb_y))
+                map_label = self.small_font.render(f"Map {self.current_map_id + 1}", True, (220, 200, 120))
+                self.screen.blit(map_label, (thumb_x + thumb_w//2 - map_label.get_width()//2, thumb_y + thumb_h + 8))
+            except Exception:
+                pass
+
+        # Players icons row under thumbnail
+        players = []
+        if game_state and isinstance(game_state, dict) and 'players' in game_state:
+            for pid, pdata in game_state['players'].items():
+                display = pdata.get('name') if isinstance(pdata, dict) and pdata.get('name') else f"Player {pid}"
+                is_ready = bool(pdata.get('ready')) if isinstance(pdata, dict) else False
+                players.append((str(pid), display, is_ready))
+
+        icon_size = int(self._scale_value(50))
+        gap = int(self._scale_value(20))
+        total_width = len(players) * icon_size + max(0, len(players)-1) * gap
+        start_x = thumb_x + (thumb_w - total_width) // 2 if total_width > 0 else thumb_x
+        py = thumb_y + thumb_h + int(self._scale_value(50, False))
+        for i, (pid, name, is_ready) in enumerate(players):
+            x = start_x + i * (icon_size + gap)
+            bg_color = (40, 60, 90) if str(pid) != str(self.player_id) else (20, 120, 80)
+            pygame.draw.circle(self.screen, bg_color, (x + icon_size//2, py), icon_size//2)
+            letter = (name[0].upper() if name else '?')
+            letter_s = self.small_font.render(letter, True, (240,240,240))
+            self.screen.blit(letter_s, letter_s.get_rect(center=(x + icon_size//2, py)))
+            tick_color = (80, 220, 120) if is_ready else (160,160,160)
+            pygame.draw.circle(self.screen, tick_color, (x + icon_size - 10, py + icon_size//2 - 10), 8)
+            name_s = self.small_font.render(name, True, (220,220,230))
+            self.screen.blit(name_s, (x + (icon_size - name_s.get_width())//2, py + icon_size//2 + 12))
+
+        # Progress bar centered under players
+        total_needed = GameConstants.MAX_PLAYERS
+        connected = max(0, len(players))
+        bar_w = int(self._scale_value(420))
+        bar_h = int(self._scale_value(18, False))
+        bar_x = cx - bar_w // 2
+        bar_y = py + int(self._scale_value(60, False))
+        pygame.draw.rect(self.screen, (60,60,70), (bar_x, bar_y, bar_w, bar_h), border_radius=10)
+        if total_needed > 0:
+            fill_w = int(bar_w * (connected / total_needed))
+            pygame.draw.rect(self.screen, (40,200,120), (bar_x, bar_y, fill_w, bar_h), border_radius=10)
+        pct_s = self.small_font.render(f"{connected}/{total_needed} connected", True, (220,220,230))
+        self.screen.blit(pct_s, pct_s.get_rect(center=(cx, bar_y + bar_h//2)))
+
+        # Controls block on the right, aligned vertically
+        instr_x = cx + int(self._scale_value(260))
+        instr_y = int(self._scale_value(220, False))
+        heading = self.font.render("CONTROLS", True, (200,200,200))
+        self.screen.blit(heading, heading.get_rect(center=(instr_x, instr_y)))
+        controls = [
+            "ARROW KEYS - Move tank & aim",
+            "SPACE - Fire",
+            "R - Reload",
             "T - Restart (after game over)",
-            "F - Toggle Fullscreen"
+            "F - Toggle fullscreen"
         ]
-        
-        for i, line in enumerate(instructions):
-            text = self.font.render(line, True, (200, 200, 200))
-            text_x = center_x - self._scale_value(150)
-            text_y = self._scale_value(390, False) + i * self._scale_value(40, False)
-            self.screen.blit(text, (text_x, text_y))
+        for i, c in enumerate(controls):
+            txt = self.small_font.render(c, True, (200,200,200))
+            self.screen.blit(txt, (instr_x - self._scale_value(110), instr_y + 30 + i * self._scale_value(28, False)))
 
     def draw_game_state(self, game_state):
         """Vẽ game state (players, bullets, etc.)"""
