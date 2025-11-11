@@ -163,6 +163,8 @@ Dự án này là mã nguồn mở và có sẵn dưới Giấy phép MIT.
 # 4 Commit với message (ví dụ)
    git commit -m "Text"
 
+Test
+
 ## Hỗ Trợ
 
 Để được hỗ trợ, báo lỗi hoặc đóng góp, vui lòng truy cập [GitHub repository](https://github.com/hiennam2803/Fire_tank_Online)
