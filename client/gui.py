@@ -1080,15 +1080,58 @@ class GameRenderer:
         for bullet in game_state['bullets']:
             x, y = self._scale_position(bullet['x'], bullet['y'])
             radius = self._scale_value(5)
-            pygame.draw.circle(self.screen, (255, 255, 0), (int(x), int(y)), int(radius))
             
-            # Vẽ vệt đạn
-            trail_length = self._scale_value(10)
+            # Vẽ hiệu ứng khói/lửa phía sau đạn
+            trail_length = self._scale_value(15)
             start_x = x - trail_length * math.cos(math.radians(bullet['angle']))
             start_y = y - trail_length * math.sin(math.radians(bullet['angle']))
-            pygame.draw.line(self.screen, (255, 200, 0), 
-                            (start_x, start_y), 
-                            (x, y), int(self._scale_value(2)))
+            
+            # Vẽ vệt lửa với gradient màu
+            for i in range(3):
+                trail_factor = 0.3 + i * 0.2  # Tạo 3 lớp vệt với độ dài khác nhau
+                trail_start_x = x - trail_length * trail_factor * math.cos(math.radians(bullet['angle']))
+                trail_start_y = y - trail_length * trail_factor * math.sin(math.radians(bullet['angle']))
+                
+                # Màu sắc từ vàng (gần đạn) đến cam/đỏ (xa đạn)
+                if i == 0:
+                    trail_color = (255, 200, 0)  # Vàng cam
+                    trail_width = int(self._scale_value(3))
+                elif i == 1:
+                    trail_color = (255, 100, 0)  # Cam
+                    trail_width = int(self._scale_value(2))
+                else:
+                    trail_color = (200, 50, 0)   # Cam đỏ
+                    trail_width = int(self._scale_value(1))
+                    
+                pygame.draw.line(self.screen, trail_color, 
+                                (trail_start_x, trail_start_y), 
+                                (x, y), trail_width)
+            
+            # Vẽ viên đạn chính với hiệu ứng lửa
+            # Lõi đạn màu trắng sáng
+            pygame.draw.circle(self.screen, (255, 255, 255), (int(x), int(y)), int(radius))
+            
+            # Lớp giữa màu vàng cam
+            middle_radius = radius * 0.7
+            pygame.draw.circle(self.screen, (255, 200, 0), (int(x), int(y)), int(middle_radius))
+            
+            # Lớp ngoài cùng màu cam đỏ
+            outer_radius = radius * 0.4
+            pygame.draw.circle(self.screen, (255, 100, 0), (int(x), int(y)), int(outer_radius))
+            
+            # Hiệu ứng tia lửa xung quanh
+            spark_count = 6
+            spark_length = self._scale_value(4)
+            for i in range(spark_count):
+                angle_offset = i * (360 / spark_count)
+                spark_angle = bullet['angle'] + angle_offset
+                spark_end_x = x + spark_length * math.cos(math.radians(spark_angle))
+                spark_end_y = y + spark_length * math.sin(math.radians(spark_angle))
+                
+                pygame.draw.line(self.screen, (255, 255, 100), 
+                                (int(x), int(y)), 
+                                (int(spark_end_x), int(spark_end_y)), 
+                                int(self._scale_value(1)))
 
     def draw_hud(self, ammo_count, max_ammo, reloading, reload_start_time, last_fire_time, game_over):
         """Vẽ HUD với thông tin game"""
