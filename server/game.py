@@ -84,9 +84,14 @@ class GameEngine:
                         player['hp'] -= GameConstants.BULLET_DAMAGE
                         
                         # Cập nhật thống kê (damage, hits)
-                        owner_stats = self.player_stats[bullet['owner']]
-                        owner_stats['damage_dealt'] += GameConstants.BULLET_DAMAGE
-                        owner_stats['shots_hit'] += 1
+                        owner = bullet.get('owner')
+                        if owner in self.player_stats:
+                            owner_stats = self.player_stats[owner]
+                            owner_stats['damage_dealt'] += GameConstants.BULLET_DAMAGE
+                            owner_stats['shots_hit'] += 1
+                        else:
+                            # Owner stats missing (possible during restart); skip stat update
+                            owner_stats = None
                         
                         if bullet in self.bullets:
                             self.bullets.remove(bullet)
@@ -196,6 +201,7 @@ class GameEngine:
         self.bullets.clear()
         self.game_state['game_over'] = False
         self.game_state['winner_id'] = None
+        # Clear and reinitialize player stats so lookups remain valid for connected players
         self.player_stats.clear()
         self.current_session_id = None
         
@@ -207,6 +213,14 @@ class GameEngine:
             player['hp'] = GameConstants.PLAYER_HP
             player['ammo'] = GameConstants.MAX_AMMO
             player['ready'] = False
+            # Recreate per-player stats after restart so collisions won't raise KeyError
+            self.player_stats[pid] = {
+                'damage_dealt': 0,
+                'shots_fired': 0,
+                'shots_hit': 0,
+                'reloads_count': 0,
+                'survival_time': 0
+            }
 
     def get_game_state(self):
         """Lấy current game state"""
