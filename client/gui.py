@@ -983,27 +983,99 @@ class GameRenderer:
         for pid, player in game_state['players'].items():
             # Sửa màu sắc: người chơi hiện tại màu xanh, đối thủ màu đỏ
             if str(pid) == str(self.player_id):
-                color = (0, 255, 0)  # Xanh lá - player hiện tại
+                base_color = (0, 255, 0)  # Xanh lá - player hiện tại
+                dark_color = (0, 150, 0)  # Xanh đậm cho chi tiết
             else:
-                color = (255, 0, 0)  # Đỏ - đối thủ
-                
+                base_color = (255, 0, 0)  # Đỏ - đối thủ
+                dark_color = (150, 0, 0)  # Đỏ đậm cho chi tiết
+            
+            # Tính toán vị trí
             x, y = self._scale_position(player['x'], player['y'])
-            radius = self._scale_value(20)
-            pygame.draw.circle(self.screen, color, (int(x), int(y)), int(radius))
+            tank_size = self._scale_value(40)
+            tank_width = tank_size
+            tank_height = tank_size * 0.6
             
-            # Vẽ tháp pháo
-            end_x = x + self._scale_value(25) * math.cos(math.radians(player['angle']))
-            end_y = y + self._scale_value(25) * math.sin(math.radians(player['angle']))
-            pygame.draw.line(self.screen, color, (x, y), (end_x, end_y), int(self._scale_value(5)))
+            # Vẽ thân xe (hình chữ nhật bo góc)
+            body_rect = pygame.Rect(
+                int(x - tank_width/2),
+                int(y - tank_height/2),
+                int(tank_width),
+                int(tank_height)
+            )
+            pygame.draw.rect(self.screen, base_color, body_rect, border_radius=int(tank_size*0.1))
             
-            # Vẽ thanh HP
+            # Vẽ viền thân xe
+            pygame.draw.rect(self.screen, dark_color, body_rect, 2, border_radius=int(tank_size*0.1))
+            
+            # Vẽ bánh xe
+            wheel_width = tank_width * 0.1
+            wheel_height = tank_height * 0.3
+            
+            # Bánh trước
+            front_wheel_rect = pygame.Rect(
+                int(x + tank_width/2 - wheel_width),
+                int(y - wheel_height/2),
+                int(wheel_width),
+                int(wheel_height)
+            )
+            pygame.draw.rect(self.screen, dark_color, front_wheel_rect, border_radius=int(wheel_width*0.3))
+            
+            # Bánh sau
+            back_wheel_rect = pygame.Rect(
+                int(x - tank_width/2),
+                int(y - wheel_height/2),
+                int(wheel_width),
+                int(wheel_height)
+            )
+            pygame.draw.rect(self.screen, dark_color, back_wheel_rect, border_radius=int(wheel_width*0.3))
+            
+            # Bánh giữa (nếu tank đủ lớn)
+            if tank_width > 30:
+                center_wheel_rect = pygame.Rect(
+                    int(x - wheel_width/2),
+                    int(y - wheel_height/2),
+                    int(wheel_width),
+                    int(wheel_height)
+                )
+                pygame.draw.rect(self.screen, dark_color, center_wheel_rect, border_radius=int(wheel_width*0.3))
+            
+            # Vẽ tháp pháo (hình tròn)
+            turret_radius = tank_size * 0.25
+            pygame.draw.circle(self.screen, base_color, (int(x), int(y)), int(turret_radius))
+            pygame.draw.circle(self.screen, dark_color, (int(x), int(y)), int(turret_radius), 2)
+            
+            # Vẽ nòng súng
+            barrel_length = tank_size * 0.8
+            end_x = x + barrel_length * math.cos(math.radians(player['angle']))
+            end_y = y + barrel_length * math.sin(math.radians(player['angle']))
+            
+            # Vẽ nòng súng (hình chữ nhật dày hơn)
+            barrel_width = tank_size * 0.08
+            barrel_vector = pygame.Vector2(barrel_length * math.cos(math.radians(player['angle'])), 
+                                        barrel_length * math.sin(math.radians(player['angle'])))
+            perpendicular = pygame.Vector2(-barrel_vector.y, barrel_vector.x).normalize() * (barrel_width/2)
+            
+            barrel_points = [
+                (x + perpendicular.x, y + perpendicular.y),
+                (x - perpendicular.x, y - perpendicular.y),
+                (end_x - perpendicular.x, end_y - perpendicular.y),
+                (end_x + perpendicular.x, end_y + perpendicular.y)
+            ]
+            
+            pygame.draw.polygon(self.screen, dark_color, barrel_points)
+            
+            # Vẽ thanh HP (giữ nguyên logic cũ nhưng đẹp hơn)
             bar_width = self._scale_value(50)
             bar_height = self._scale_value(5)
             bar_x = x - self._scale_value(25)
             bar_y = y - self._scale_value(40)
-            pygame.draw.rect(self.screen, (255,0,0), (bar_x, bar_y, bar_width, bar_height))
-            pygame.draw.rect(self.screen, (0,255,0), (bar_x, bar_y, self._scale_value(player['hp']/2), bar_height))
-
+            
+            # Nền thanh máu
+            pygame.draw.rect(self.screen, (255, 0, 0), (bar_x, bar_y, bar_width, bar_height))
+            
+            # Máu hiện tại
+            hp_width = self._scale_value(player['hp']/2)
+            pygame.draw.rect(self.screen, (0, 255, 0), (bar_x, bar_y, hp_width, bar_height))
     # Vẽ viên đạn
         for bullet in game_state['bullets']:
             x, y = self._scale_position(bullet['x'], bullet['y'])
