@@ -32,7 +32,7 @@ class TankServer:
         try:
             # Nhận thông tin đăng nhập từ client
             auth_data = client_socket.recv(1024).decode()
-            print(f"📨 Received auth data: {auth_data}")  # Gỡ lỗi
+            print(f" Received auth data: {auth_data}")  # Gỡ lỗi
             
             auth_info = json.loads(auth_data)
             
@@ -78,21 +78,21 @@ class TankServer:
                 print(f"Player {player_id} ({username}) connected from {address}")
                 
                 # Nhận UDP port từ client
-                # ✅ Gửi phản hồi xác thực
+                #  Gửi phản hồi xác thực
                 client_socket.send(response.encode())
 
                 player_id = str(player_db_id)
                 print(f"Player {player_id} ({username}) connected from {address}")
 
-                # ✅ Gửi player_id NGAY LẬP TỨC (client đang chờ cái này)
+                #  Gửi player_id NGAY LẬP TỨC (client đang chờ cái này)
                 client_socket.send(player_id.encode())
 
-                # ✅ Gửi trạng thái WAITING ngay sau player_id
+                #  Gửi trạng thái WAITING ngay sau player_id
                 client_socket.send(MessageTypes.WAITING_FOR_PLAYERS.encode())
 
-                # ✅ Sau đó mới nhận UDP_PORT từ client
+                #  Sau đó mới nhận UDP_PORT từ client
                 data = client_socket.recv(1024).decode()
-                print(f"📨 Received UDP port: {data}")
+                print(f" Received UDP port: {data}")
 
                 if data.startswith("UDP_PORT:"):
                     udp_port = int(data.split(":")[1])
@@ -103,7 +103,7 @@ class TankServer:
                         'username': username
                     }
 
-                    print(f"✅ Player {player_id} UDP port registered: {udp_port}")
+                    print(f" Player {player_id} UDP port registered: {udp_port}")
 
                 
                 # Vòng lặp chính xử lý client TCP
@@ -149,7 +149,7 @@ class TankServer:
                             print(f"Error processing TCP reload for {player_id}: {e}")
                         
         except json.JSONDecodeError as e:
-            print(f"❌ JSON decode error: {e}")
+            print(f" JSON decode error: {e}")
             error_response = json.dumps({
                 'type': 'auth_response',
                 'success': False,
@@ -158,7 +158,7 @@ class TankServer:
             client_socket.send(error_response.encode())
             client_socket.close()
         except Exception as e:
-            print(f"❌ Error with player: {e}")
+            print(f" Error with player: {e}")
             import traceback
             traceback.print_exc()
         finally:

@@ -30,11 +30,11 @@ class DatabaseManager:
                 charset='utf8mb4',
                 cursorclass=pymysql.cursors.DictCursor
             )
-            print("✅ Đã kết nối đến MySQL database sử dụng PyMySQL")
+            print(" Đã kết nối đến MySQL database sử dụng PyMySQL")
             return True
             
         except pymysql.Error as e:
-            print(f"❌ Lỗi kết nối database: {e}")
+            print(f" Lỗi kết nối database: {e}")
             
             # Thử kết nối không cần database trước
             try:
@@ -45,12 +45,12 @@ class DatabaseManager:
                     port=self.port,
                     charset='utf8mb4'
                 )
-                print("✅ Kết nối MySQL thành công (không có database)")
+                print(" Kết nối MySQL thành công (không có database)")
                 
                 # Tạo database nếu chưa tồn tại
                 with temp_conn.cursor() as cursor:
                     cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
-                    print(f"✅ Đã tạo database: {self.database}")
+                    print(f" Đã tạo database: {self.database}")
                 
                 temp_conn.close()
                 
@@ -65,14 +65,14 @@ class DatabaseManager:
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor
                 )
-                print("✅ Đã kết nối đến database")
+                print("Đã kết nối đến database")
                 
                 # Tạo tables
                 self._create_tables()
                 return True
                 
             except pymysql.Error as e2:
-                print(f"❌ Vẫn lỗi: {e2}")
+                print(f" Vẫn lỗi: {e2}")
                 return self._prompt_and_connect()
 
     def _prompt_and_connect(self):
@@ -95,13 +95,13 @@ class DatabaseManager:
                 charset='utf8mb4',
                 cursorclass=pymysql.cursors.DictCursor
             )
-            print("✅ Kết nối thành công với thông tin mới!")
+            print(" Kết nối thành công với thông tin mới!")
             
             # Tạo tables nếu cần
             self._create_tables()
             return True
         except pymysql.Error as e:
-            print(f"❌ Vẫn lỗi: {e}")
+            print(f" Vẫn lỗi: {e}")
             return False
 
     def _create_tables(self):
@@ -169,10 +169,10 @@ class DatabaseManager:
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_player_stats_player ON player_stats(player_id)")
                 
             self.connection.commit()
-            print("✅ Đã tạo các bảng thành công")
+            print(" Đã tạo các bảng thành công")
             
         except pymysql.Error as e:
-            print(f"❌ Lỗi tạo tables: {e}")
+            print(f" Lỗi tạo tables: {e}")
 
     def hash_password(self, password: str) -> str:
         """Hash mật khẩu với salt"""
@@ -368,4 +368,4 @@ class DatabaseManager:
         """Đóng kết nối database"""
         if self.connection and self.connection.open:
             self.connection.close()
-            print("✅ Đã đóng kết nối database")
+            print(" Đã đóng kết nối database")

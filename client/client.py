@@ -123,7 +123,7 @@ class TankGame:
             print(f"📨 Nhận response: {response_data}")  # Gỡ lỗi
             
             if not response_data:
-                print("❌ Không nhận được phản hồi từ server")
+                print(" Không nhận được phản hồi từ server")
                 return False
                 
             response = json.loads(response_data)
@@ -133,18 +133,18 @@ class TankGame:
                 self.player_db_id = response.get('player_id')
                 self.player_id = str(self.player_db_id)  # Gán player_id ngay tại đây
                 self.username = username
-                print(f"✅ Đăng nhập thành công! ID: {self.player_db_id}")
+                print(f" Đăng nhập thành công! ID: {self.player_db_id}")
                 return True
             else:
-                print(f"❌ Lỗi: {response.get('message')}")
+                print(f" Lỗi: {response.get('message')}")
                 return False
                 
         except json.JSONDecodeError as e:
-            print(f"❌ Lỗi parse JSON từ server: {e}")
-            print(f"📨 Dữ liệu nhận được: {response_data}")
+            print(f" Lỗi parse JSON từ server: {e}")
+            print(f" Dữ liệu nhận được: {response_data}")
             return False
         except Exception as e:
-            print(f"❌ Lỗi xác thực: {e}")
+            print(f" Lỗi xác thực: {e}")
             import traceback
             traceback.print_exc()
             return False

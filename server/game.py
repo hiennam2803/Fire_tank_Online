@@ -201,11 +201,11 @@ class GameEngine:
         self.bullets.clear()
         self.game_state['game_over'] = False
         self.game_state['winner_id'] = None
-        # Clear and reinitialize player stats so lookups remain valid for connected players
+        # Xóa và khởi tạo lại số liệu thống kê của người chơi để tra cứu vẫn hợp lệ đối với người chơi đã kết nối
         self.player_stats.clear()
         self.current_session_id = None
         
-        # Reset player positions và stats
+       # Đặt lại vị trí và số liệu thống kê của người chơi
         for pid, player in self.players.items():
             player['x'] = 100 if pid == '1' else 700
             player['y'] = 300
@@ -213,7 +213,7 @@ class GameEngine:
             player['hp'] = GameConstants.PLAYER_HP
             player['ammo'] = GameConstants.MAX_AMMO
             player['ready'] = False
-            # Recreate per-player stats after restart so collisions won't raise KeyError
+            # Tạo lại số liệu thống kê cho mỗi người chơi sau khi khởi động lại để va chạm không gây ra KeyError
             self.player_stats[pid] = {
                 'damage_dealt': 0,
                 'shots_fired': 0,

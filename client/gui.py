@@ -41,10 +41,10 @@ class GameRenderer:
         pygame.init()
         self.screen = pygame.display.set_mode((self.original_width, self.original_height), pygame.RESIZABLE)
         pygame.display.set_caption(f"Tank Battle - Player {self.player_id}")
-        # Use a common Windows font to reduce glyph issues (falls back if not available)
+        #Sử dụng phông chữ Windows phổ biến để giảm các vấn đề về ký tự tượng hình (có thể sử dụng lại nếu không có)
         preferred_font = "Segoe UI"
         self.font = pygame.font.SysFont(preferred_font, 36)
-        # Small font for placeholders and helper text
+        # Phông chữ nhỏ cho chỗ giữ chỗ và văn bản trợ giúp
         self.small_font = pygame.font.SysFont(preferred_font, 18)
         self.big_font = pygame.font.SysFont(preferred_font, 72)
 
@@ -65,7 +65,7 @@ class GameRenderer:
     def show_auth_menu(self):
         """Hiển thị màn hình chọn Login hoặc Register. Trả về 'login' hoặc 'register'"""
         if HAVE_PYGAME_GUI and self.screen is not None:
-            # Simple pygame_gui menu
+            # Menu pygame_gui đơn giản
             manager = pygame_gui.UIManager(self.current_size)
             clock = pygame.time.Clock()
             cx, cy = self._get_center()
@@ -73,7 +73,7 @@ class GameRenderer:
             left = cx - w//2
             top = cy - h//2
 
-            # draw rounded backgrounds for the buttons so they look more modern
+            # vẽ nền tròn cho các nút để chúng trông hiện đại hơn
             login_btn = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((left + 20, top + 20), (160, 80)), text='Login', manager=manager)
             reg_btn = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((left + 220, top + 20), (160, 80)), text='Register', manager=manager)
 
@@ -93,24 +93,24 @@ class GameRenderer:
                             running = False
                     manager.process_events(event)
                 manager.update(time_delta)
-                # background + card
+               # nền + thẻ
                 self._draw_gradient_bg((18,20,30), (6,8,18))
                 self._draw_card((left, top, w, h), color=(18,18,28), border_color=(60,60,70))
-                # draw logo if available
+               # vẽ logo nếu có
                 if getattr(self, 'logo', None):
                     logo = pygame.transform.smoothscale(self.logo, (96, 96))
-                    # move logo higher so title and buttons have breathing room
+                   # di chuyển logo lên cao hơn để tiêu đề và các nút có không gian trống
                     self.screen.blit(logo, logo.get_rect(center=(cx, top - 120)))
-                # Draw title above the buttons with a larger gap
+               # Vẽ tiêu đề phía trên các nút với khoảng cách lớn hơn
                 title = self.big_font.render('Welcome', True, (255,220,0))
                 self.screen.blit(title, title.get_rect(center=(cx, top - 40)))
-                # draw rounded rects behind GUI buttons to make them visually rounded
+              # vẽ các hình chữ nhật bo tròn phía sau các nút GUI để làm cho chúng trở nên tròn trịa về mặt thị giác
                 pygame.draw.rect(self.screen, (70,70,70), pygame.Rect(left + 20, top + 20, 160, 80), border_radius=12)
                 pygame.draw.rect(self.screen, (70,70,70), pygame.Rect(left + 220, top + 20, 160, 80), border_radius=12)
                 manager.draw_ui(self.screen)
                 pygame.display.update()
             return choice
-        # Fallback custom menu
+       # Menu tùy chỉnh dự phòng
         clock = pygame.time.Clock()
         cx, cy = self._get_center()
         w = 500; h = 180
@@ -132,17 +132,17 @@ class GameRenderer:
                         choice='register'; running=False
 
             self.screen.fill((10,10,20))
-            # Styled background + card
+            # Nền + thẻ được tạo kiểu
             self._draw_gradient_bg((18,20,30), (6,8,18))
             self._draw_card((left, top, w, h), color=(18,18,28), border_color=(60,60,70))
-            # draw logo if available
+            # vẽ logo nếu có
             if getattr(self, 'logo', None):
                 logo = pygame.transform.smoothscale(self.logo, (96,96))
                 self.screen.blit(logo, logo.get_rect(center=(cx, top - 120)))
-            # Title above buttons with larger spacing
+           # Tiêu đề phía trên các nút có khoảng cách lớn hơn
             title = self.big_font.render('Welcome', True, (255,220,0))
             self.screen.blit(title, title.get_rect(center=(cx, top - 40)))
-            # Buttons (rounded)
+           # Nút (tròn)
             login_rect = pygame.Rect(left + 40, top + 40, 180, 80)
             reg_rect = pygame.Rect(left + 280, top + 40, 180, 80)
             pygame.draw.rect(self.screen, (80,80,80), login_rect, border_radius=12)
@@ -165,7 +165,7 @@ class GameRenderer:
             display_text = '*' * len(text)
         # Nếu rỗng và không active, hiển thị placeholder mờ
         if not display_text:
-            # placeholder will be rendered by caller when needed
+         # trình giữ chỗ sẽ được hiển thị bởi người gọi khi cần
             txt_surf = self.font.render('', True, (230, 230, 230))
         else:
             txt_surf = self.font.render(display_text, True, (230, 230, 230))
@@ -206,7 +206,7 @@ class GameRenderer:
             except Exception:
                 selection = None
 
-        # Loop: show menu, then page; allow pages to return {'action':'back'} to re-open menu
+        # Vòng lặp: hiển thị menu, sau đó là trang; cho phép các trang trả về {'action':'back'} để mở lại menu
         while True:
             selection = None
             if self.screen is not None:
@@ -215,11 +215,11 @@ class GameRenderer:
                 except Exception:
                     selection = None
 
-            # If user closed the menu
+           # Nếu người dùng đóng menu
             if selection is None:
                 return None
 
-            # Choose GUI variant
+            # Chọn biến thể GUI
             if HAVE_PYGAME_GUI and self.screen is not None:
                 try:
                     if selection == 'register':
@@ -235,7 +235,7 @@ class GameRenderer:
                 else:
                     res = self._show_login_page_custom()
 
-            # None = closed; {'action':'back'} = go back to selection; otherwise return result
+           # None = đóng; {'action':'back'} = quay lại lựa chọn; nếu không thì trả về kết quả
             if res is None:
                 return None
             if isinstance(res, dict) and res.get('action') == 'back':
@@ -256,10 +256,10 @@ class GameRenderer:
         left = cx - box_w // 2
         top = cy - box_h // 2
 
-        # Title label (we'll draw it manually for nicer font)
+        # Nhãn tiêu đề (chúng tôi sẽ vẽ thủ công để có phông chữ đẹp hơn)
         title_surf = self.big_font.render("Fire Tank", True, (255, 220, 0))
 
-        # Input fields
+       # Trường nhập liệu
         host_input = pygame_gui.elements.UITextEntryLine(
             relative_rect=pygame.Rect((left + 20, top + 60), (box_w - 40, 36)),
             manager=manager,
@@ -282,7 +282,7 @@ class GameRenderer:
             text='Login',
             manager=manager
         )
-        # Use a single Login button on the login page (Register is on the separate page)
+        # Sử dụng một nút Đăng nhập duy nhất trên trang đăng nhập (Đăng ký nằm trên trang riêng)
         login_button = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect((left + 20, top + 190), (box_w - 40, 40)),
             text='Login',
@@ -294,12 +294,12 @@ class GameRenderer:
             manager=manager
         )
 
-        # Placeholders
+        # Phần giữ chỗ
         host_input.set_text('')
         username_input.set_text('')
         password_input.set_text('')
 
-        # Helper text
+        # Văn bản trợ giúp
         info_label = None
 
         running = True
@@ -327,12 +327,12 @@ class GameRenderer:
 
             manager.update(time_delta)
 
-            # Draw background card
-            # Styled background
+            # Vẽ thẻ nền
+            # Nền được tạo kiểu
             self._draw_gradient_bg((24, 28, 48), (6, 8, 18))
             # Card
             self._draw_card((left, top, box_w, box_h), color=(22, 22, 30), border_color=(70,70,80))
-            # Title with shadow
+          # Tiêu đề có bóng
             shadow = self.big_font.render("Fire Tank", True, (10, 10, 10))
             self.screen.blit(shadow, shadow.get_rect(center=(cx + 2, top + 32)))
             self.screen.blit(title_surf, title_surf.get_rect(center=(cx, top + 30)))
@@ -412,7 +412,7 @@ class GameRenderer:
                         return {'action': 'back'}
 
             # Draw
-            # Gradient background + card
+            # Nền chuyển màu + thẻ
             self._draw_gradient_bg((24, 28, 48), (6, 8, 18))
             title = self.big_font.render("Fire Tank - Login", True, (255, 220, 0))
             tx, ty = self._get_center()
@@ -422,7 +422,7 @@ class GameRenderer:
             y0 = 160
             card_h = 320
             self._draw_card((start_x - 40, y0 - 80, hw + 80, card_h), color=(22,22,30), border_color=(60,60,70))
-            # title with shadow
+            # tiêu đề có bóng
             shadow = self.big_font.render("Fire Tank - Login", True, (10,10,10))
             self.screen.blit(shadow, shadow.get_rect(center=(tx + 2, 82)))
             self.screen.blit(title, title.get_rect(center=(tx, 80)))
@@ -461,7 +461,7 @@ class GameRenderer:
             info = self.font.render("Enter to submit. Click fields to focus.", True, (220,220,220))
             self.screen.blit(info, info.get_rect(center=(tx, y0 + 220)))
 
-            # Draw Back button
+            # Nút Vẽ lại
             back_rect = pygame.Rect(start_x - 100, y0 - 48, 80, 30)
             pygame.draw.rect(self.screen, (80,80,80), back_rect)
             btxt = self.small_font.render('Back', True, (230,230,230))
@@ -589,7 +589,7 @@ class GameRenderer:
                 ph_pos = (name_rect.x + 8, name_rect.y + (name_rect.height - ph.get_height()) // 2)
                 self.screen.blit(ph, ph_pos)
 
-            # Draw styled buttons area (visual only)
+            # Vẽ vùng nút được tạo kiểu (chỉ trực quan)
             btn_w = 160; btn_h = 40
             login_btn_rect = pygame.Rect(tx - btn_w - 20, y0 + 220, btn_w, btn_h)
             pygame.draw.rect(self.screen, (70,70,80), login_btn_rect, border_radius=6)
@@ -866,9 +866,9 @@ class GameRenderer:
     
     def draw_waiting_screen(self, game_state, ready, waiting_for_players):
         """Vẽ màn hình chờ"""
-        # Simplified, clearer layout:
-        # Title top, player id under title, status centered, map thumbnail left, players row under map,
-        # progress bar centered under players, controls block on right.
+       # Bố cục đơn giản và rõ ràng hơn:
+        # Tiêu đề ở trên cùng, ID người chơi ở dưới tiêu đề, trạng thái ở giữa, hình thu nhỏ bản đồ ở bên trái, hàng người chơi ở dưới bản đồ,
+        # thanh tiến trình nằm ở giữa bên dưới người chơi, khối điều khiển ở bên phải.
         self.draw_background()
         overlay = pygame.Surface(self.current_size, pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
@@ -881,11 +881,11 @@ class GameRenderer:
         title_rect = title_text.get_rect(center=(cx, int(self._scale_value(100, False))))
         self.screen.blit(title_text, title_rect)
 
-        # Player ID just below title
+        # ID người chơi ngay bên dưới tiêu đề
         id_surf = self.font.render(f"Player ID: {self.player_id}", True, (64, 220, 220))
         self.screen.blit(id_surf, id_surf.get_rect(center=(cx, int(self._scale_value(150, False)))))
 
-        # Status (centered under player id)
+        # Trạng thái (ở giữa bên dưới ID người chơi)
         t = time.time()
         dots = int((t * 2) % 4)
         dot_str = "." * dots
@@ -901,7 +901,7 @@ class GameRenderer:
         status_surf = self.font.render(status_str, True, status_color)
         self.screen.blit(status_surf, status_surf.get_rect(center=(cx, int(self._scale_value(200, False)))))
 
-        # Map thumbnail on the left
+        # Hình thu nhỏ bản đồ ở bên trái
         thumb_w = int(self._scale_value(260))
         thumb_h = int(self._scale_value(140, False))
         thumb_x = cx - int(self._scale_value(320))
@@ -916,7 +916,7 @@ class GameRenderer:
             except Exception:
                 pass
 
-        # Players icons row under thumbnail
+        # Hàng biểu tượng người chơi bên dưới hình thu nhỏ
         players = []
         if game_state and isinstance(game_state, dict) and 'players' in game_state:
             for pid, pdata in game_state['players'].items():
@@ -941,7 +941,7 @@ class GameRenderer:
             name_s = self.small_font.render(name, True, (220,220,230))
             self.screen.blit(name_s, (x + (icon_size - name_s.get_width())//2, py + icon_size//2 + 12))
 
-        # Progress bar centered under players
+        # Thanh tiến trình được đặt ở giữa bên dưới người chơi
         total_needed = GameConstants.MAX_PLAYERS
         connected = max(0, len(players))
         bar_w = int(self._scale_value(420))
@@ -955,7 +955,7 @@ class GameRenderer:
         pct_s = self.small_font.render(f"{connected}/{total_needed} connected", True, (220,220,230))
         self.screen.blit(pct_s, pct_s.get_rect(center=(cx, bar_y + bar_h//2)))
 
-        # Controls block on the right, aligned vertically
+        # Khối điều khiển ở bên phải, căn chỉnh theo chiều dọc
         instr_x = cx + int(self._scale_value(260))
         instr_y = int(self._scale_value(220, False))
         heading = self.font.render("CONTROLS", True, (200,200,200))
