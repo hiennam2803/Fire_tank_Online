@@ -105,8 +105,6 @@ class TankServer:
 
                     print(f" Player {player_id} UDP port registered: {udp_port}")
 
-                
-                # Vòng lặp chính xử lý client TCP
                 while self.running:
                     try:
                         raw = client_socket.recv(1024)

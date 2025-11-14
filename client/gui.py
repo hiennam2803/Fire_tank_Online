@@ -487,7 +487,7 @@ class GameRenderer:
         password = ''
         name = ''
 
-        active = 0  # 0:host,1:username,2:password,3:name
+        active = 0  
         clock = pygame.time.Clock()
         running = True
 
@@ -538,7 +538,7 @@ class GameRenderer:
                     for i, r in enumerate(boxes):
                         if r.collidepoint(mx, my):
                             active = i
-                    # Back button
+                    
                     back_rect = pygame.Rect(start_x - 100, y0 - 48, 80, 30)
                     if back_rect.collidepoint(mx, my):
                         return {'action': 'back'}
@@ -804,7 +804,7 @@ class GameRenderer:
                              (i + 20, j + 30), (i + 10, j + 20)]
                     pygame.draw.polygon(bg, (color[0] + 20, color[1] + 20, color[2] + 20), points)
         
-    # Thêm chữ để nhận biết bản đồ
+   
         font = pygame.font.SysFont(None, 48)
         text = font.render(f"MAP {map_id + 1}", True, (255, 255, 255))
         text_rect = text.get_rect(center=(self.original_width // 2, self.original_height // 2))
@@ -1076,7 +1076,7 @@ class GameRenderer:
             # Máu hiện tại
             hp_width = self._scale_value(player['hp']/2)
             pygame.draw.rect(self.screen, (0, 255, 0), (bar_x, bar_y, hp_width, bar_height))
-    # Vẽ viên đạn
+
         for bullet in game_state['bullets']:
             x, y = self._scale_position(bullet['x'], bullet['y'])
             radius = self._scale_value(5)
