@@ -23,7 +23,7 @@ class GameRenderer:
         self.original_width = GameConstants.SCREEN_WIDTH
         self.original_height = GameConstants.SCREEN_HEIGHT
         self.fullscreen = False
-        self.current_size = (self.original_width, self.original_height)
+        # self.current_size = (self.original_width, self.original_height) # Không cần nữa
         self.backgrounds = []
         self.current_background = None
         self.scaled_background = None
@@ -39,7 +39,11 @@ class GameRenderer:
     def initialize(self):
         """Khởi tạo pygame và font"""
         pygame.init()
-        self.screen = pygame.display.set_mode((self.original_width, self.original_height), pygame.RESIZABLE)
+        # SỬA 1: Thêm pygame.SCALED
+        self.screen = pygame.display.set_mode(
+            (self.original_width, self.original_height), 
+            pygame.RESIZABLE | pygame.SCALED
+        )
         pygame.display.set_caption(f"Tank Battle - Player {self.player_id}")
         #Sử dụng phông chữ Windows phổ biến để giảm các vấn đề về ký tự tượng hình (có thể sử dụng lại nếu không có)
         preferred_font = "Segoe UI"
@@ -65,8 +69,8 @@ class GameRenderer:
     def show_auth_menu(self):
         """Hiển thị màn hình chọn Login hoặc Register. Trả về 'login' hoặc 'register'"""
         if HAVE_PYGAME_GUI and self.screen is not None:
-            # Menu pygame_gui đơn giản
-            manager = pygame_gui.UIManager(self.current_size)
+            # SỬA 2.1: Dùng kích thước gốc
+            manager = pygame_gui.UIManager((self.original_width, self.original_height))
             clock = pygame.time.Clock()
             cx, cy = self._get_center()
             w = 400; h = 120
@@ -99,12 +103,12 @@ class GameRenderer:
                # vẽ logo nếu có
                 if getattr(self, 'logo', None):
                     logo = pygame.transform.smoothscale(self.logo, (96, 96))
-                   # di chuyển logo lên cao hơn để tiêu đề và các nút có không gian trống
+                    # di chuyển logo lên cao hơn để tiêu đề và các nút có không gian trống
                     self.screen.blit(logo, logo.get_rect(center=(cx, top - 120)))
-               # Vẽ tiêu đề phía trên các nút với khoảng cách lớn hơn
+               # Vẽ tiêu đề phía trên các nút có khoảng cách lớn hơn
                 title = self.big_font.render('Welcome', True, (255,220,0))
                 self.screen.blit(title, title.get_rect(center=(cx, top - 40)))
-              # vẽ các hình chữ nhật bo tròn phía sau các nút GUI để làm cho chúng trở nên tròn trịa về mặt thị giác
+               # vẽ các hình chữ nhật bo tròn phía sau các nút GUI để làm cho chúng trở nên tròn trịa về mặt thị giác
                 pygame.draw.rect(self.screen, (70,70,70), pygame.Rect(left + 20, top + 20, 160, 80), border_radius=12)
                 pygame.draw.rect(self.screen, (70,70,70), pygame.Rect(left + 220, top + 20, 160, 80), border_radius=12)
                 manager.draw_ui(self.screen)
@@ -165,7 +169,7 @@ class GameRenderer:
             display_text = '*' * len(text)
         # Nếu rỗng và không active, hiển thị placeholder mờ
         if not display_text:
-         # trình giữ chỗ sẽ được hiển thị bởi người gọi khi cần
+       # trình giữ chỗ sẽ được hiển thị bởi người gọi khi cần
             txt_surf = self.font.render('', True, (230, 230, 230))
         else:
             txt_surf = self.font.render(display_text, True, (230, 230, 230))
@@ -174,7 +178,7 @@ class GameRenderer:
 
     def _draw_gradient_bg(self, top_color=(20,24,40), bottom_color=(6,8,18)):
         """Vẽ background gradient dọc từ top_color xuống bottom_color."""
-        w, h = self.current_size
+        w, h = (self.original_width, self.original_height) # Dùng kích thước gốc
         grad = pygame.Surface((1, h)).convert_alpha()
         for y in range(h):
             t = y / max(1, h - 1)
@@ -247,11 +251,12 @@ class GameRenderer:
         if not HAVE_PYGAME_GUI:
             raise RuntimeError("pygame_gui not available")
 
-        manager = pygame_gui.UIManager(self.current_size)
+        # SỬA 2.2: Dùng kích thước gốc
+        manager = pygame_gui.UIManager((self.original_width, self.original_height))
         clock = pygame.time.Clock()
 
         cx, cy = self._get_center()
-        box_w = min(600, self.current_size[0] - 100)
+        box_w = min(600, self.original_width - 100) # Dùng kích thước gốc
         box_h = 260
         left = cx - box_w // 2
         top = cy - box_h // 2
@@ -332,7 +337,7 @@ class GameRenderer:
             self._draw_gradient_bg((24, 28, 48), (6, 8, 18))
             # Card
             self._draw_card((left, top, box_w, box_h), color=(22, 22, 30), border_color=(70,70,80))
-          # Tiêu đề có bóng
+           # Tiêu đề có bóng
             shadow = self.big_font.render("Fire Tank", True, (10, 10, 10))
             self.screen.blit(shadow, shadow.get_rect(center=(cx + 2, top + 32)))
             self.screen.blit(title_surf, title_surf.get_rect(center=(cx, top + 30)))
@@ -619,12 +624,13 @@ class GameRenderer:
         """Pygame_gui variant of register page (adds display name field)."""
         if not HAVE_PYGAME_GUI:
             raise RuntimeError("pygame_gui not available")
-
-        manager = pygame_gui.UIManager(self.current_size)
+        
+        # SỬA 2.3: Dùng kích thước gốc
+        manager = pygame_gui.UIManager((self.original_width, self.original_height))
         clock = pygame.time.Clock()
 
         cx, cy = self._get_center()
-        box_w = min(600, self.current_size[0] - 100)
+        box_w = min(600, self.original_width - 100) # Dùng kích thước gốc
         box_h = 320
         left = cx - box_w // 2
         top = cy - box_h // 2
@@ -723,24 +729,31 @@ class GameRenderer:
 
         return result
     
+    # SỬA 3: Thay thế hàm set_map
     def set_map(self, map_id):
         """Thiết lập map dựa trên ID từ server"""
         print(f"Setting map to ID: {map_id}")
         if 0 <= map_id < len(self.backgrounds):
             self.current_map_id = map_id
             self.current_background = self.backgrounds[map_id]
-            self._rescale_background()
             self.map_initialized = True
-            return True
         else:
             print(f"Invalid map_id: {map_id}, available: 0-{len(self.backgrounds)-1}")
             # Dự phòng: chuyển về map đầu tiên
             if self.backgrounds:
                 self.current_map_id = 0
                 self.current_background = self.backgrounds[0]
-                self._rescale_background()
                 self.map_initialized = True
-            return False
+            else:
+                return False
+
+        # Scale background về kích thước GỐC, không phải kích thước cửa sổ
+        self.scaled_background = pygame.transform.scale(
+            self.current_background, 
+            (self.original_width, self.original_height)
+        )
+        print(f"Background rescaled to: ({self.original_width}, {self.original_height})")
+        return True
     
     def get_current_map_id(self):
         """Lấy ID của map hiện tại"""
@@ -749,7 +762,7 @@ class GameRenderer:
     def load_backgrounds(self):
         """Load tất cả background images từ thư mục ui/"""
         background_dir = "ui"
-    # Tạo thư mục nếu chưa tồn tại
+       # Tạo thư mục nếu chưa tồn tại
         if not os.path.exists(background_dir):
             os.makedirs(background_dir)
             print(f"Created directory: {background_dir}")
@@ -771,7 +784,7 @@ class GameRenderer:
                 print(f"Error loading background {bg_file}: {e}")
                 self.create_default_background(background_files.index(bg_file))
         
-    # Đảm bảo có ít nhất 3 ảnh nền
+       # Đảm bảo có ít nhất 3 ảnh nền
         while len(self.backgrounds) < 3:
             self.create_default_background(len(self.backgrounds))
         
@@ -779,7 +792,7 @@ class GameRenderer:
     
     def create_default_background(self, map_id):
         """Tạo background mặc định dựa trên map_id"""
-    # Màu sắc khác nhau cho mỗi bản đồ
+       # Màu sắc khác nhau cho mỗi bản đồ
         colors = [
             (30, 30, 60),   # Bản đồ 1: Xanh đậm
             (40, 60, 30),   # Bản đồ 2: Xanh lá
@@ -790,7 +803,7 @@ class GameRenderer:
         bg = pygame.Surface((self.original_width, self.original_height))
         bg.fill(color)
         
-    # Vẽ họa tiết đặc trưng cho mỗi bản đồ
+       # Vẽ họa tiết đặc trưng cho mỗi bản đồ
         for i in range(0, self.original_width, 40):
             for j in range(0, self.original_height, 40):
                 if map_id == 0:  # Bản đồ 1: chấm tròn
@@ -798,13 +811,13 @@ class GameRenderer:
                                      (i + 20, j + 20), 3)
                 elif map_id == 1:  # Bản đồ 2: hình vuông
                     pygame.draw.rect(bg, (color[0] + 20, color[1] + 20, color[2] + 20), 
-                                   (i + 15, j + 15, 10, 10))
+                                     (i + 15, j + 15, 10, 10))
                 else:  # Bản đồ 3: hình thoi
                     points = [(i + 20, j + 10), (i + 30, j + 20), 
-                             (i + 20, j + 30), (i + 10, j + 20)]
+                              (i + 20, j + 30), (i + 10, j + 20)]
                     pygame.draw.polygon(bg, (color[0] + 20, color[1] + 20, color[2] + 20), points)
         
-   
+    
         font = pygame.font.SysFont(None, 48)
         text = font.render(f"MAP {map_id + 1}", True, (255, 255, 255))
         text_rect = text.get_rect(center=(self.original_width // 2, self.original_height // 2))
@@ -813,49 +826,45 @@ class GameRenderer:
         self.backgrounds.append(bg)
         print(f"Created default background for map {map_id + 1}")
     
-    def _rescale_background(self):
-        """Scale background theo kích thước hiện tại"""
-        if self.current_background:
-            self.scaled_background = pygame.transform.scale(self.current_background, self.current_size)
-            print(f"Background rescaled to: {self.current_size}")
+    # SỬA 4: Xoá hàm _rescale_background (đã bị xoá)
     
+    # SỬA 5: Thay thế hàm toggle_fullscreen
     def toggle_fullscreen(self):
         """Chuyển đổi giữa chế độ fullscreen và windowed"""
         self.fullscreen = not self.fullscreen
         if self.fullscreen:
             # Lấy kích thước màn hình hiện tại
-            screen_info = pygame.display.Info()
-            self.current_size = (screen_info.current_w, screen_info.current_h)
-            self.screen = pygame.display.set_mode(self.current_size, pygame.FULLSCREEN)
+            self.screen = pygame.display.set_mode(
+                (self.original_width, self.original_height), 
+                pygame.FULLSCREEN | pygame.SCALED
+            )
         else:
-            self.current_size = (self.original_width, self.original_height)
-            self.screen = pygame.display.set_mode(self.current_size, pygame.RESIZABLE)
-        self._rescale_background()
+            self.screen = pygame.display.set_mode(
+                (self.original_width, self.original_height), 
+                pygame.RESIZABLE | pygame.SCALED
+            )
+        # Không cần gọi _rescale_background() nữa
     
-    def handle_resize(self, size):
-        """Xử lý sự kiện thay đổi kích thước cửa sổ"""
-        if not self.fullscreen:
-            self.current_size = size
-            self.screen = pygame.display.set_mode(self.current_size, pygame.RESIZABLE)
-            self._rescale_background()
+    # SỬA 6: Xoá hàm handle_resize (đã bị xoá)
     
+    # SỬA 7: Thay thế các hàm scale
     def _scale_position(self, x, y):
-        """Tính toán vị trí tỷ lệ dựa trên kích thước hiện tại"""
-        scale_x = self.current_size[0] / self.original_width
-        scale_y = self.current_size[1] / self.original_height
-        return x * scale_x, y * scale_y
+        """(Không dùng nữa - Pygame SCALED tự xử lý)
+        Trả về giá trị gốc vì Pygame tự động scale.
+        """
+        return x, y
     
     def _scale_value(self, value, is_width=True):
-        """Tính toán giá trị tỷ lệ (width hoặc height)"""
-        if is_width:
-            return value * (self.current_size[0] / self.original_width)
-        else:
-            return value * (self.current_size[1] / self.original_height)
+        """(Không dùng nữa - Pygame SCALED tự xử lý)
+        Trả về giá trị gốc vì Pygame tự động scale.
+        """
+        return value
     
     def _get_center(self):
-        """Lấy vị trí trung tâm của màn hình hiện tại"""
-        return self.current_size[0] // 2, self.current_size[1] // 2
+        """Lấy vị trí trung tâm của màn hình GỐC"""
+        return self.original_width // 2, self.original_height // 2
 
+    # SỬA 8: Thay thế hàm draw_background
     def draw_background(self):
         """Vẽ background"""
         if self.scaled_background:
@@ -867,10 +876,10 @@ class GameRenderer:
     def draw_waiting_screen(self, game_state, ready, waiting_for_players):
         """Vẽ màn hình chờ"""
        # Bố cục đơn giản và rõ ràng hơn:
-        # Tiêu đề ở trên cùng, ID người chơi ở dưới tiêu đề, trạng thái ở giữa, hình thu nhỏ bản đồ ở bên trái, hàng người chơi ở dưới bản đồ,
-        # thanh tiến trình nằm ở giữa bên dưới người chơi, khối điều khiển ở bên phải.
+       # Tiêu đề ở trên cùng, ID người chơi ở dưới tiêu đề, trạng thái ở giữa, hình thu nhỏ bản đồ ở bên trái, hàng người chơi ở dưới bản đồ,
+       # thanh tiến trình nằm ở giữa bên dưới người chơi, khối điều khiển ở bên phải.
         self.draw_background()
-        overlay = pygame.Surface(self.current_size, pygame.SRCALPHA)
+        overlay = pygame.Surface((self.original_width, self.original_height), pygame.SRCALPHA) # Dùng kích thước gốc
         overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
 
@@ -976,10 +985,10 @@ class GameRenderer:
         if not game_state:
             return
         
-    # Vẽ nền
+       # Vẽ nền
         self.draw_background()
             
-    # Vẽ người chơi - SỬA LẠI MÀU SẮC
+       # Vẽ người chơi - SỬA LẠI MÀU SẮC
         for pid, player in game_state['players'].items():
             # Sửa màu sắc: người chơi hiện tại màu xanh, đối thủ màu đỏ
             if str(pid) == str(self.player_id):
@@ -989,7 +998,7 @@ class GameRenderer:
                 base_color = (255, 0, 0)  # Đỏ - đối thủ
                 dark_color = (150, 0, 0)  # Đỏ đậm cho chi tiết
             
-            # Tính toán vị trí
+            # Tính toán vị trí (Hàm _scale_position giờ chỉ trả về (x, y))
             x, y = self._scale_position(player['x'], player['y'])
             tank_size = self._scale_value(40)
             tank_width = tank_size
@@ -1052,7 +1061,7 @@ class GameRenderer:
             # Vẽ nòng súng (hình chữ nhật dày hơn)
             barrel_width = tank_size * 0.08
             barrel_vector = pygame.Vector2(barrel_length * math.cos(math.radians(player['angle'])), 
-                                        barrel_length * math.sin(math.radians(player['angle'])))
+                                         barrel_length * math.sin(math.radians(player['angle'])))
             perpendicular = pygame.Vector2(-barrel_vector.y, barrel_vector.x).normalize() * (barrel_width/2)
             
             barrel_points = [
@@ -1104,8 +1113,8 @@ class GameRenderer:
                     trail_width = int(self._scale_value(1))
                     
                 pygame.draw.line(self.screen, trail_color, 
-                                (trail_start_x, trail_start_y), 
-                                (x, y), trail_width)
+                                 (trail_start_x, trail_start_y), 
+                                 (x, y), trail_width)
             
             # Vẽ viên đạn chính với hiệu ứng lửa
             # Lõi đạn màu trắng sáng
@@ -1129,24 +1138,24 @@ class GameRenderer:
                 spark_end_y = y + spark_length * math.sin(math.radians(spark_angle))
                 
                 pygame.draw.line(self.screen, (255, 255, 100), 
-                                (int(x), int(y)), 
-                                (int(spark_end_x), int(spark_end_y)), 
-                                int(self._scale_value(1)))
+                                 (int(x), int(y)), 
+                                 (int(spark_end_x), int(spark_end_y)), 
+                                 int(self._scale_value(1)))
 
     def draw_hud(self, ammo_count, max_ammo, reloading, reload_start_time, last_fire_time, game_over):
         """Vẽ HUD với thông tin game"""
-    # Tạo nền bán trong suốt cho HUD
+       # Tạo nền bán trong suốt cho HUD
         hud_bg = pygame.Surface((self._scale_value(300), self._scale_value(120)), pygame.SRCALPHA)
         hud_bg.fill((0, 0, 0, 128))
         self.screen.blit(hud_bg, (self._scale_value(5), self._scale_value(5)))
         
-    # Điều chỉnh kích thước phần tử HUD theo kích thước màn hình
+       # Điều chỉnh kích thước phần tử HUD theo kích thước màn hình
         base_x = self._scale_value(15)
         base_y = self._scale_value(15)
         bar_width = self._scale_value(200)
         bar_height = self._scale_value(15)
         
-    # Vẽ bộ đếm đạn
+       # Vẽ bộ đếm đạn
         ammo_color = (255, 255, 255)
         if ammo_count == 0:
             ammo_color = (255, 0, 0)
@@ -1156,18 +1165,18 @@ class GameRenderer:
         ammo_text = self.font.render(f"Ammo: {ammo_count}/{max_ammo}", True, ammo_color)
         self.screen.blit(ammo_text, (base_x, base_y))
         
-    # Vẽ thông tin bản đồ trên HUD
+       # Vẽ thông tin bản đồ trên HUD
         map_text = self.font.render(f"Map: {self.current_map_id + 1}", True, (200, 200, 100))
-        self.screen.blit(map_text, (self.current_size[0] - self._scale_value(100), base_y))
+        self.screen.blit(map_text, (self.original_width - self._scale_value(100), base_y)) # Dùng original_width
         
-    # Vẽ thanh chỉ báo thời gian hồi bắn
+       # Vẽ thanh chỉ báo thời gian hồi bắn
         fire_cooldown_percent = min(1.0, (time.time() - last_fire_time) / GameConstants.FIRE_COOLDOWN)
         pygame.draw.rect(self.screen, (100, 100, 100), (base_x, base_y + self._scale_value(35), bar_width, bar_height))
         pygame.draw.rect(self.screen, (0, 200, 0), (base_x, base_y + self._scale_value(35), bar_width * fire_cooldown_percent, bar_height))
         fire_text = self.font.render("Fire Cooldown", True, (255, 255, 255))
         self.screen.blit(fire_text, (base_x, base_y + self._scale_value(15)))
         
-    # Vẽ chỉ báo nạp đạn
+       # Vẽ chỉ báo nạp đạn
         if reloading:
             reload_progress = min(1.0, (time.time() - reload_start_time) / GameConstants.RELOAD_DURATION)
             pygame.draw.rect(self.screen, (100, 100, 100), (base_x, base_y + self._scale_value(75), bar_width, bar_height))
@@ -1188,14 +1197,14 @@ class GameRenderer:
 
     def draw_game_over(self, winner_id, waiting_for_restart):
         """Vẽ màn hình game over"""
-    # Overlay bán trong suốt
-        overlay = pygame.Surface(self.current_size, pygame.SRCALPHA)
+       # Overlay bán trong suốt
+        overlay = pygame.Surface((self.original_width, self.original_height), pygame.SRCALPHA) # Dùng kích thước gốc
         overlay.fill((0, 0, 0, 180))
         self.screen.blit(overlay, (0, 0))
         
         center_x, center_y = self._get_center()
         
-    # Xác định văn bản hiển thị người chiến thắng
+       # Xác định văn bản hiển thị người chiến thắng
         if winner_id == self.player_id:
             winner_text = self.big_font.render("VICTORY!", True, (0, 255, 0))
         elif winner_id is None:
@@ -1206,12 +1215,12 @@ class GameRenderer:
         text_rect = winner_text.get_rect(center=(center_x, self._scale_value(250, False)))
         self.screen.blit(winner_text, text_rect)
         
-    # Hiển thị thông tin bản đồ
+       # Hiển thị thông tin bản đồ
         map_text = self.font.render(f"Map: {self.current_map_id + 1}", True, (200, 200, 100))
         map_rect = map_text.get_rect(center=(center_x, self._scale_value(300, False)))
         self.screen.blit(map_text, map_rect)
         
-    # Hiển thị hướng dẫn khởi động lại
+       # Hiển thị hướng dẫn khởi động lại
         if waiting_for_restart:
             restart_text = self.font.render("Waiting for other players...", True, (255, 255, 255))
         else:
