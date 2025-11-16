@@ -11,7 +11,7 @@ class DatabaseManager:
         # Sử dụng biến môi trường hoặc giá trị mặc định
         self.host = host or os.getenv('DB_HOST', 'localhost')
         self.user = user or os.getenv('DB_USER', 'root')
-        self.password = password or os.getenv('DB_PASSWORD', 'Hien2832005@')
+        self.password = password or os.getenv('DB_PASSWORD', '12345')
         self.database = database or os.getenv('DB_NAME', 'tank_battle')
         self.port = port or int(os.getenv('DB_PORT', '3306'))
         self.connection = None

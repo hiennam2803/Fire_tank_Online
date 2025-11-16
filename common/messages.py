@@ -26,3 +26,5 @@ class GameConstants:
     PLAYER_HP = 100
     BULLET_SPEED = 10
     BULLET_DAMAGE = 25
+    MAP_COUNT = 3
+    

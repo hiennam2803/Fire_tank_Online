@@ -212,6 +212,10 @@ class TankGame:
         self.waiting_for_restart = False
         self.last_fire_time = 0
         self.ready = False
+        
+        # Báo cho client biết game đã kết thúc và cần quay lại màn hình chờ
+        self.game_started = False 
+        
     # Đặt lại vị trí người chơi
         self.player_x = 400
         self.player_y = 300
@@ -228,17 +232,23 @@ class TankGame:
                 print(f"Received TCP: {data}")
                         
                 if data == MessageTypes.RESTART:
-                    self.handle_restart()
+                    self.handle_restart() 
                     print("Game restarted!")
+                
                 elif data == MessageTypes.GAME_START:
                     self.game_started = True
                     self.waiting_for_players = False
                     self.game_over = False
                     print("Game started!")
+                
                 elif data == MessageTypes.WAITING_FOR_PLAYERS:
-                    self.waiting_for_players = True
-                    self.game_started = False
-                    print("Waiting for more players...")
+                    if not self.game_started:
+                        self.waiting_for_players = True
+                        self.game_started = False
+                        print("Waiting for more players...")
+                    else:
+                        print("Ignored WAITING message because game already started.")
+
                 elif data == MessageTypes.SERVER_FULL:
                     print("Server is full! Cannot join.")
                     self.running = False
@@ -264,7 +274,6 @@ class TankGame:
                     if player_data:
                         if 'ammo' in player_data:
                             self.ammo_count = player_data['ammo']
-                        # Cập nhật vị trí từ server để đồng bộ hoá
                         self.player_x = player_data.get('x', self.player_x)
                         self.player_y = player_data.get('y', self.player_y)
                         self.player_angle = player_data.get('angle', self.player_angle)
@@ -273,10 +282,10 @@ class TankGame:
                 if 'game_over' in self.game_state and self.game_state['game_over']:
                     self.game_over = True
                     self.winner_id = self.game_state.get('winner_id')
-                    self.game_started = False
-                else:
-                    self.game_over = False
-                    self.winner_id = None
+                    self.game_started = False # <--- Dòng này là nguyên nhân gây kẹt
+                # else: # Bỏ else này để game_over không bị reset
+                #    self.game_over = False
+                #    self.winner_id = None
                     
             except Exception as e:
                 print(f"UDP receive error: {e}")
@@ -322,20 +331,15 @@ class TankGame:
 
     def start_reload(self):
         """Bắt đầu quá trình reload"""
-    # Chỉ cho phép nạp đạn khi trận đấu đang chạy và chưa ở trạng thái nạp.
-    # Giữ kiểm tra rằng số đạn phải nhỏ hơn tối đa để tránh nạp thừa.
         if not self.reloading and self.game_started and not self.game_over and self.ammo_count < GameConstants.MAX_AMMO:
             self.reloading = True
             self.reload_start_time = time.time()
-            # Gửi lệnh nạp đạn qua UDP (real-time) và qua TCP như fallback đáng tin cậy
             reload_msg = {
                 'id': self.player_id,
                 'reload': True
             }
             self.send_udp_data(reload_msg)
             try:
-                # Gửi một marker TCP ngắn để server nhận được ý định nạp đạn một cách đáng tin cậy
-                # Server sẽ chấp nhận chuỗi thuần 'RELOAD' như fallback
                 if self.tcp_socket:
                     self.tcp_socket.send(b'RELOAD')
             except Exception as e:
@@ -348,10 +352,8 @@ class TankGame:
             elapsed = current_time - self.reload_start_time
             
             if elapsed >= GameConstants.RELOAD_DURATION:
-                # Hoàn tất nạp đạn
                 self.ammo_count = GameConstants.MAX_AMMO
                 self.reloading = False
-                # Gửi cập nhật số đạn tới server
                 self.send_udp_data({
                     'id': self.player_id,
                     'ammo_update': self.ammo_count
@@ -363,7 +365,6 @@ class TankGame:
         """Xử lý di chuyển của player"""
         keys = pygame.key.get_pressed()
         
-    # Xử lý di chuyển
         if keys[pygame.K_LEFT]:
             self.player_angle -= 5
         if keys[pygame.K_RIGHT]:
@@ -375,7 +376,6 @@ class TankGame:
             self.player_x -= 5 * math.cos(math.radians(self.player_angle))
             self.player_y -= 5 * math.sin(math.radians(self.player_angle))
         
-    # Giới hạn vị trí trong khu vực màn hình
         self.player_x = max(20, min(GameConstants.SCREEN_WIDTH - 20, self.player_x))
         self.player_y = max(20, min(GameConstants.SCREEN_HEIGHT - 20, self.player_y))
 
@@ -409,10 +409,8 @@ class TankGame:
         while self.running:
             current_time = time.time()
             
-            # Cập nhật trạng thái nạp đạn
             self.update_reload()
             
-            # Xử lý sự kiện Pygame
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
@@ -422,30 +420,33 @@ class TankGame:
                     elif event.key == pygame.K_r and self.game_started and not self.game_over:
                         self.start_reload()
                     elif event.key == pygame.K_t and self.game_over:
-                        self.send_restart_request()
-                        self.waiting_for_restart = True
-
-            # Nếu trận chưa bắt đầu, hiển thị màn chờ
-            if not self.game_started:
+                        # Chỉ gửi nếu chưa gửi
+                        if not self.waiting_for_restart:
+                            self.send_restart_request()
+            
+            # === BẮT ĐẦU SỬA LỖI LOGIC ===
+            # Chỉ vẽ màn hình chờ KHI game chưa bắt đầu VÀ game chưa kết thúc
+            if not self.game_started and not self.game_over:
                 self.renderer.draw_waiting_screen(self.game_state, self.ready, self.waiting_for_players)
                 self.renderer.update_display()
                 clock.tick(30)
                 continue
+            # === KẾT THÚC SỬA LỖI LOGIC ===
 
             # Xử lý input khi game đang chạy và chưa kết thúc
             if self.game_started and not self.game_over:
-                # Xử lý di chuyển
                 self.handle_movement()
-                
-                # Xử lý hành vi bắn đạn
                 self.handle_firing(current_time)
-                
-                # Gửi cập nhật vị trí tới server
                 self.send_player_update()
 
-            # Vẽ trò chơi
-            self.renderer.screen.fill((0, 0, 0))
+            
             if self.game_state:
+                server_map_id = self.game_state.get('map_id') 
+                if server_map_id is not None and self.renderer.get_current_map_id() != server_map_id:
+                    print(f"Client nhận lệnh đổi map sang ID: {server_map_id}")
+                    self.renderer.set_map(server_map_id)
+                
+                # Vẽ state (Nền, xe tăng, đạn)
                 self.renderer.draw_game_state(self.game_state)
             
             # Vẽ HUD
@@ -458,12 +459,12 @@ class TankGame:
                 self.game_over
             )
             
-            # Vẽ màn hình kết thúc nếu trận đấu đã kết thúc
+            # Vẽ màn hình kết thúc (Popup)
             if self.game_over:
                 self.renderer.draw_game_over(self.winner_id, self.waiting_for_restart)
             
             self.renderer.update_display()
-            clock.tick(60)  # Tăng FPS lên 60 để mượt hơn
+            clock.tick(60)
 
         # Cleanup
         self.renderer.cleanup()
