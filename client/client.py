@@ -14,7 +14,8 @@ class TankGame:
     def __init__(self):
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # Phân tích tham số CLI tuỳ chọn cho chế độ tự động
+        
+        # Phân tích tham số CLI tuỳ chọn cho chế độ tự động
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('--auto', action='store_true', help='Auto-login mode (skip interactive prompts)')
         parser.add_argument('--host')
@@ -27,23 +28,22 @@ class TankGame:
         except Exception:
             self.cli_args = argparse.Namespace(auto=False, host=None, auth_type=None, username=None, password=None, name=None)
 
-    # Xác định host: tham số CLI > nhập tương tác > localhost
+        # Xác định host: tham số CLI > nhập tương tác > localhost
         if getattr(self.cli_args, 'host', None):
             self.host = self.cli_args.host or 'localhost'
         else:
-            self.host = input("Nhập địa chỉ IP của server (để trống cho localhost): ").strip()
-            if self.host == '0' or self.host == '':
-                self.host = 'localhost'
+            self.host = 'localhost'  # Mặc định, sẽ được cập nhật từ GUI
+        
         self.player_id = None
         self.game_state = None
         self.running = True
         
-    # Cờ trạng thái trò chơi
+        # Cờ trạng thái trò chơi
         self.ready = False
         self.game_started = False
         self.waiting_for_players = True
         
-    # Cơ chế trò chơi
+        # Cơ chế trò chơi
         self.last_fire_time = 0
         self.ammo_count = GameConstants.MAX_AMMO
         self.reloading = False
@@ -52,12 +52,12 @@ class TankGame:
         self.winner_id = None
         self.waiting_for_restart = False
         
-    # Vị trí và góc hướng của người chơi (lưu cục bộ)
+        # Vị trí và góc hướng của người chơi (lưu cục bộ)
         self.player_x = 400
         self.player_y = 300
         self.player_angle = 0
         
-    # Giao diện
+        # Giao diện
         self.renderer = None
         self.gui_auth = None
 
@@ -66,7 +66,7 @@ class TankGame:
         self.username = None
 
     def authenticate(self):
-        """Xác thực người dùng"""
+        """Xác thực người dùng - PHIÊN BẢN ĐÃ SỬA"""
         print("\n=== Fire Tank Online ===")
 
         # Nếu có dữ liệu auth từ GUI, dùng nó
@@ -124,66 +124,118 @@ class TankGame:
             
             if not response_data:
                 print(" Không nhận được phản hồi từ server")
-                return False
+                return {'success': False, 'message': 'No response from server'}
                 
             response = json.loads(response_data)
             
+            # THÊM XỬ LÝ CHO REGISTER RESPONSE
+            if response.get('type') == 'register_response':
+                if response['success']:
+                    print(f"✅ {response['message']}")
+                    # Trả về thông báo để quay lại login
+                    return {
+                        'success': True, 
+                        'action': 'back_to_login', 
+                        'message': response['message'],
+                        'auth_type': 'register'
+                    }
+                else:
+                    return {
+                        'success': False, 
+                        'message': response.get('message', 'Registration failed')
+                    }
+            
+            # Xử lý login response như bình thường
             if response.get('success'):
                 self.authenticated = True
                 self.player_db_id = response.get('player_id')
                 self.player_id = str(self.player_db_id)  # Gán player_id ngay tại đây
                 self.username = username
                 print(f" Đăng nhập thành công! ID: {self.player_db_id}")
-                return True
+                return {'success': True, 'auth_type': 'login'}
             else:
                 print(f" Lỗi: {response.get('message')}")
-                return False
+                return {
+                    'success': False, 
+                    'message': response.get('message', 'Authentication failed')
+                }
                 
         except json.JSONDecodeError as e:
             print(f" Lỗi parse JSON từ server: {e}")
             print(f" Dữ liệu nhận được: {response_data}")
-            return False
+            return {'success': False, 'message': f'JSON decode error: {e}'}
         except Exception as e:
             print(f" Lỗi xác thực: {e}")
             import traceback
             traceback.print_exc()
-            return False
+            return {'success': False, 'message': str(e)}
 
     def connect(self):
         """Kết nối tới server với xác thực"""
         try:
-            # Khởi tạo renderer sớm để sử dụng màn hình đăng nhập GUI nếu cần
+            # Khởi tạo renderer sớm để sử dụng màn hình đăng nhập GUI
             self.renderer = GameRenderer(self.username or '')
             try:
                 self.renderer.initialize()
-            except Exception:
+            except Exception as e:
+                print(f"Không thể khởi tạo GUI: {e}")
                 # Nếu pygame không khả dụng trong môi trường hiện tại, ta vẫn tiếp tục (fallback CLI)
                 pass
 
-            # Nếu không ở chế độ auto CLI, hiển thị màn hình login GUI để nhập host/credentials
+            # Hiển thị màn hình login GUI để nhập host/credentials (trừ khi là auto CLI)
             if not (getattr(self, 'cli_args', None) and getattr(self.cli_args, 'auto', False)):
-                gui_auth = None
-                try:
-                    gui_auth = self.renderer.show_login_screen()
-                except Exception:
-                    gui_auth = None
+                while True:  # Vòng lặp để có thể quay lại login sau khi đăng ký
+                    try:
+                        gui_auth = self.renderer.show_login_screen()
+                    except Exception as e:
+                        print(f"GUI login error: {e}")
+                        gui_auth = None
 
-                if gui_auth is None:
-                    print("Login canceled or GUI closed.")
+                    if gui_auth is None:
+                        print("Login canceled or GUI closed.")
+                        self.running = False
+                        return
+                    
+                    # Lưu thông tin từ GUI
+                    self.gui_auth = gui_auth
+                    if gui_auth.get('host'):
+                        self.host = gui_auth.get('host')
+
+                    # Kết nối TCP
+                    try:
+                        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        self.tcp_socket.connect((self.host, GameConstants.TCP_PORT))
+                    except Exception as e:
+                        print(f"Connection error: {e}")
+                        # Hiển thị thông báo lỗi và quay lại login
+                        continue
+
+                    # Thực hiện xác thực
+                    auth_result = self.authenticate()
+                    
+                    if auth_result['success']:
+                        if auth_result.get('action') == 'back_to_login':
+                            # Đăng ký thành công, đóng kết nối và quay lại login
+                            print(f"🎉 {auth_result['message']}")
+                            self.tcp_socket.close()
+                            self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            continue  # Quay lại đầu vòng lặp để hiển thị login lại
+                        else:
+                            # Đăng nhập thành công, thoát vòng lặp
+                            break
+                    else:
+                        # Xác thực thất bại, quay lại login
+                        print(f"❌ {auth_result['message']}")
+                        self.tcp_socket.close()
+                        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        continue
+            else:
+                # Chế độ auto CLI
+                self.tcp_socket.connect((self.host, GameConstants.TCP_PORT))
+                auth_result = self.authenticate()
+                if not auth_result['success']:
                     self.running = False
                     return
-                # Lưu thông tin từ GUI
-                self.gui_auth = gui_auth
-                if gui_auth.get('host'):
-                    self.host = gui_auth.get('host')
-
-            # Kết nối TCP
-            self.tcp_socket.connect((self.host, GameConstants.TCP_PORT))
-
-            # Thực hiện xác thực
-            if not self.authenticate():
-                self.running = False
-                return
 
             # Cập nhật renderer với player id đã nhận
             self.renderer.set_player_id(self.player_id)
@@ -216,7 +268,7 @@ class TankGame:
         # Báo cho client biết game đã kết thúc và cần quay lại màn hình chờ
         self.game_started = False 
         
-    # Đặt lại vị trí người chơi
+        # Đặt lại vị trí người chơi
         self.player_x = 400
         self.player_y = 300
         self.player_angle = 0
@@ -282,10 +334,7 @@ class TankGame:
                 if 'game_over' in self.game_state and self.game_state['game_over']:
                     self.game_over = True
                     self.winner_id = self.game_state.get('winner_id')
-                    self.game_started = False # <--- Dòng này là nguyên nhân gây kẹt
-                # else: # Bỏ else này để game_over không bị reset
-                #    self.game_over = False
-                #    self.winner_id = None
+                    # KHÔNG set game_started = False ở đây để tránh kẹt
                     
             except Exception as e:
                 print(f"UDP receive error: {e}")
@@ -423,46 +472,45 @@ class TankGame:
                         # Chỉ gửi nếu chưa gửi
                         if not self.waiting_for_restart:
                             self.send_restart_request()
+                    elif event.key == pygame.K_f:
+                        if self.renderer:
+                            self.renderer.toggle_fullscreen()
             
-            # === BẮT ĐẦU SỬA LỖI LOGIC ===
-            # Chỉ vẽ màn hình chờ KHI game chưa bắt đầu VÀ game chưa kết thúc
+            # Logic vẽ màn hình
             if not self.game_started and not self.game_over:
+                # Màn hình chờ
                 self.renderer.draw_waiting_screen(self.game_state, self.ready, self.waiting_for_players)
-                self.renderer.update_display()
-                clock.tick(30)
-                continue
-            # === KẾT THÚC SỬA LỖI LOGIC ===
-
-            # Xử lý input khi game đang chạy và chưa kết thúc
-            if self.game_started and not self.game_over:
-                self.handle_movement()
-                self.handle_firing(current_time)
-                self.send_player_update()
-
-            
-            if self.game_state:
-                server_map_id = self.game_state.get('map_id') 
-                if server_map_id is not None and self.renderer.get_current_map_id() != server_map_id:
-                    print(f"Client nhận lệnh đổi map sang ID: {server_map_id}")
-                    self.renderer.set_map(server_map_id)
+            else:
+                # Game đang chạy hoặc kết thúc
+                if self.game_state:
+                    server_map_id = self.game_state.get('map_id') 
+                    if server_map_id is not None and self.renderer.get_current_map_id() != server_map_id:
+                        print(f"Client nhận lệnh đổi map sang ID: {server_map_id}")
+                        self.renderer.set_map(server_map_id)
+                    
+                    # Vẽ state (Nền, xe tăng, đạn)
+                    self.renderer.draw_game_state(self.game_state)
                 
-                # Vẽ state (Nền, xe tăng, đạn)
-                self.renderer.draw_game_state(self.game_state)
-            
-            # Vẽ HUD
-            self.renderer.draw_hud(
-                self.ammo_count, 
-                GameConstants.MAX_AMMO,
-                self.reloading,
-                self.reload_start_time,
-                self.last_fire_time,
-                self.game_over
-            )
-            
-            # Vẽ màn hình kết thúc (Popup)
-            if self.game_over:
-                self.renderer.draw_game_over(self.winner_id, self.waiting_for_restart)
-            
+                # Vẽ HUD
+                self.renderer.draw_hud(
+                    self.ammo_count, 
+                    GameConstants.MAX_AMMO,
+                    self.reloading,
+                    self.reload_start_time,
+                    self.last_fire_time,
+                    self.game_over
+                )
+                
+                # Vẽ màn hình kết thúc (Popup)
+                if self.game_over:
+                    self.renderer.draw_game_over(self.winner_id, self.waiting_for_restart)
+                
+                # Xử lý input khi game đang chạy và chưa kết thúc
+                if self.game_started and not self.game_over:
+                    self.handle_movement()
+                    self.handle_firing(current_time)
+                    self.send_player_update()
+
             self.renderer.update_display()
             clock.tick(60)
 
@@ -474,4 +522,5 @@ class TankGame:
 if __name__ == "__main__":
     game = TankGame()
     game.connect()
-    game.run()
+    if game.running:
+        game.run()

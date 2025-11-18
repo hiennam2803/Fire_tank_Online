@@ -46,9 +46,22 @@ class TankServer:
                 name = auth_info.get('name', username)
                 success, message = self.database.register_player(username, password, name)
                 if success:
-                    auth_success, player_db_id, message = self.database.authenticate_player(username, password)
+                    # Gửi response đăng ký thành công và đóng kết nối
+                    response = json.dumps({
+                        'type': 'register_response',
+                        'success': True,
+                        'message': 'Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.'
+                    })
+                    client_socket.send(response.encode())
+                    client_socket.close()
+                    print(f"Player registered successfully: {username}")
+                    return  # Kết thúc kết nối sau khi đăng ký
                 else:
-                    response = json.dumps({'type': 'auth_response','success': False,'message': message})
+                    response = json.dumps({
+                        'type': 'auth_response',
+                        'success': False,
+                        'message': message
+                    })
                     client_socket.send(response.encode())
                     client_socket.close()
                     return
@@ -112,8 +125,7 @@ class TankServer:
                             if self.game_engine.handle_restart_request(player_id):
                                 self.restart_game() # Gửi RESTART cho cả 2
                             else:
-                                # === SỬA LỖI: Gửi RESTART_ACCEPTED ===
-                                # Gửi lại cho client vừa bấm T để họ biết là đang chờ
+                                # Gửi RESTART_ACCEPTED
                                 client_socket.send(MessageTypes.RESTART_ACCEPTED.encode())
 
                         elif data == 'RELOAD':
@@ -127,7 +139,11 @@ class TankServer:
                     
         except json.JSONDecodeError as e:
             print(f" JSON decode error: {e}")
-            error_response = json.dumps({'type': 'auth_response','success': False,'message': 'Invalid authentication data'})
+            error_response = json.dumps({
+                'type': 'auth_response',
+                'success': False,
+                'message': 'Invalid authentication data'
+            })
             try:
                 client_socket.send(error_response.encode())
             except Exception:
@@ -144,7 +160,6 @@ class TankServer:
                     del self.player_authenticated[player_id]
             client_socket.close()
             print(f"Connection from {address} closed.")
-
 
     def start_game(self):
         """Bắt đầu game mới với tracking session"""
