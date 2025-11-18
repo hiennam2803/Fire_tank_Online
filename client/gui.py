@@ -1126,3 +1126,5 @@ class GameRenderer:
 
     def cleanup(self):
         pygame.quit()
+        # xóa ảnh xe tăng
+        
