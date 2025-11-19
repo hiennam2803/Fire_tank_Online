@@ -25,6 +25,21 @@ class GameEngine:
         self.current_map = random.randint(0, GameConstants.MAP_COUNT - 1)
         self.game_state['map_id'] = self.current_map
 
+    def choose_random_map(self, exclude_current=True):
+        """Chọn map ngẫu nhiên. Nếu exclude_current=True sẽ tránh chọn map hiện tại nếu có lựa chọn khác."""
+        old_map = getattr(self, 'current_map', None)
+        if exclude_current and old_map is not None:
+            possible_maps = [i for i in range(GameConstants.MAP_COUNT) if i != old_map]
+            if possible_maps:
+                self.current_map = random.choice(possible_maps)
+            else:
+                self.current_map = old_map
+        else:
+            self.current_map = random.randint(0, GameConstants.MAP_COUNT - 1)
+
+        self.game_state['map_id'] = self.current_map
+        print(f"Map selected. Old map: {old_map}, New map: {self.current_map}")
+
 
     def add_player(self, player_id, udp_address, tcp_socket, player_name="Player"):
         """Thêm player mới vào game"""
@@ -62,7 +77,7 @@ class GameEngine:
     def process_player_message(self, player_id, message):
         """Xử lý message từ player và cập nhật thống kê"""
         if player_id not in self.players:
-             return 
+            return
         
         player = self.players[player_id]
         
@@ -164,7 +179,7 @@ class GameEngine:
             opponent = list(self.players.keys())[0] if self.players else None
             self._end_game(winner_id=opponent) 
         elif not self.game_started:
-             print(f"Player {player_id} disconnected from lobby.")
+            print(f"Player {player_id} disconnected from lobby.")
 
 
     def set_player_ready(self, player_id):
@@ -184,12 +199,15 @@ class GameEngine:
 
     def start_game(self):
         """Bắt đầu game mới"""
+        # Chọn map mới khi bắt đầu game (random)
+        self.choose_random_map(exclude_current=True)
+
         self.game_started = True
         self.restart_requests.clear()
         self.game_state['game_over'] = False
         self.game_state['winner_id'] = None
         self.game_start_time = time.time() # Đặt thời gian bắt đầu
-        print("GameEngine: Game is starting!")
+        print("GameEngine: Game is starting! (map_id={})".format(self.current_map))
 
     
     def update_game(self):
@@ -215,8 +233,8 @@ class GameEngine:
     
     def _end_game(self, winner_id):
         """Kết thúc game"""
-        if self.game_state['game_over']: 
-             return
+        if self.game_state['game_over']:
+            return
         print(f"Game ending. Winner: {winner_id}")
         self.game_started = False
         self.game_state['game_over'] = True
@@ -261,19 +279,8 @@ class GameEngine:
         self.player_stats.clear()
         self.current_session_id = None
         
-        # === SỬA LỖI LOGIC: CHỌN MAP MỚI KHÁC MAP CŨ ===
-        old_map = self.current_map
-        # Tạo danh sách các map có thể chọn (không bao gồm map cũ)
-        possible_maps = [i for i in range(GameConstants.MAP_COUNT) if i != old_map]
-        
-        if not possible_maps: # Trường hợp chỉ có 1 map
-            self.current_map = old_map
-        else:
-            self.current_map = random.choice(possible_maps)
-            
-        self.game_state['map_id'] = self.current_map
-        print(f"Game restarting. Old map was {old_map}, new map is {self.current_map}")
-        # === KẾT THÚC SỬA ===
+        # Chọn map mới khác map cũ khi restart
+        self.choose_random_map(exclude_current=True)
         
         # Đặt lại vị trí và số liệu thống kê của người chơi
         player_count = 0

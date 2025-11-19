@@ -503,7 +503,17 @@ class TankGame:
                 
                 # Vẽ màn hình kết thúc (Popup)
                 if self.game_over:
-                    self.renderer.draw_game_over(self.winner_id, self.waiting_for_restart)
+                    # Try to resolve winner name from last known game_state
+                    winner_name = None
+                    try:
+                        if self.game_state and 'players' in self.game_state and self.winner_id is not None:
+                            pdata = self.game_state['players'].get(str(self.winner_id))
+                            if pdata and isinstance(pdata, dict):
+                                winner_name = pdata.get('name')
+                    except Exception:
+                        winner_name = None
+
+                    self.renderer.draw_game_over(self.winner_id, winner_name, self.waiting_for_restart)
                 
                 # Xử lý input khi game đang chạy và chưa kết thúc
                 if self.game_started and not self.game_over:

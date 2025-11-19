@@ -177,6 +177,8 @@ class TankServer:
             self.game_engine.update_player_name(players[0], self.player_authenticated[players[0]]['username'])
             self.game_engine.update_player_name(players[1], self.player_authenticated[players[1]]['username'])
             
+            # Chọn map ngẫu nhiên trước khi tạo session (đảm bảo session lưu map đúng)
+            self.game_engine.choose_random_map(exclude_current=True)
             session_id = self.database.create_game_session(
                 player1_db_id, player2_db_id, self.game_engine.current_map
             )
@@ -258,7 +260,7 @@ class TankServer:
         """Lấy ID của đối thủ"""
         players = list(self.game_engine.players.keys())
         if not player_id or not players or len(players) < 2:
-             return None
+            return None
         return players[1] if str(players[0]) == str(player_id) else players[0]
 
     def handle_udp_data(self):
